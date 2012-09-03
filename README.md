@@ -1,4 +1,4 @@
-DSOS v0.02 Pre-Alpha
+DSOS v0.03 Pre-Alpha
 ====
 
 Repository For DSOS
@@ -6,6 +6,8 @@ Repository For DSOS
 DSOS is a Operating System That Completely Changes ComputerCraft.
 
 DSOS is still pre-alpha, so don't expect anything awesome! (Exept CCIMG :D)
+
+New in this release: Empty HDD mounts and SYS mounts!
 
 Install
 =======

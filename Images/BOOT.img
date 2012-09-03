@@ -1,5 +1,5 @@
 1
-F:1:boot:0:11919:term.clear()
+F:1:boot:0:12803:term.clear()
 term.setCursorPos(1, 1)
 local rfs = fs
 fs={}
@@ -154,6 +154,31 @@ function mount.getMounted()
 		table.insert(ret,i)
 	end
 	return ret
+end
+function mount.mountDisk(side, point)
+  if device.getType(side) == "drive" and device.call(side, "isPresent") and device.call(side, "hasData") then
+    local mp = device.call(side,"getMountPath")
+    if rfs.exists(mp.."/DISK.img") then
+      mount.mount(mp.."/DISK.img",point)
+    end
+  end
+end
+function mount.canMountDisk(side)
+  if device.getType(side) == "drive" and device.call(side, "isPresent") and device.call(side, "hasData") then
+    local mp = device.call(side,"getMountPath")
+    if rfs.exists(mp.."/DISK.img") then
+      return true
+    end
+  end
+  return false
+end
+function mount.formatDisk(side)
+  if device.getType(side) == "drive" and device.call(side, "isPresent") and device.call(side, "hasData") then
+    local mp = device.call(side,"getMountPath")
+    local f = rfs.open(mp.."/DISK.img", "w")
+    f.write(encodeIMG({file={},directory={}}))
+    f.close()
+  end
 end
 function fs.exists(path)
 	local ps = split(path, "/")

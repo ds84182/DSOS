@@ -1,5 +1,6 @@
-2
-F:1:DeviceDiscovery.lexe:0:254:while true do
+4
+D:1:System:0
+F:1:DeviceDiscovery.lexe:1:254:while true do
   local e, s = os.pullEvent()
   if e == "device" then
     print("Unknown Device ''"..device.getType(s).."'' Connected On "..s.." Side")
@@ -8,7 +9,9 @@ F:1:DeviceDiscovery.lexe:0:254:while true do
   end
 end
 
-F:2:systemstartup.lsys:0:270:local keys = library.load("Keys")
+F:2:DiskFormat.lexe:1:2: 
+
+F:3:systemstartup.lsys:0:270:local keys = library.load("Keys")
 local Win=library.load("Win")
 local DD = fs.open("HDD:/DeviceDiscovery.lexe", "r")
 loadstring(DD:readAll())()

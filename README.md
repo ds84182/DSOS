@@ -24,7 +24,7 @@ API
 ===
 
   Mount
-  =====
+
 
     mount.mount(image, point)
 
@@ -42,8 +42,20 @@ API
 
       All of the mounted Images
 
+    mount.mountDisk(side, point)
+
+      Mounts a Disk on the selected side to the selected point
+
+    mount.canMountDisk(side)
+
+      Checks if a disk is formated
+
+    mount.formatDisk(side)
+
+      Correctly formats a disk
+
   FS
-  ==
+
 
     fs.exists(path)
 

@@ -1,4 +1,4 @@
-3
+6
 F:1:libGFX:0:743:local GFX = {}
 function GFX.rectangle(mode, x, y, w, h, fill, stime)
 	stime = stime or 0
@@ -32,7 +32,9 @@ function GFX.rectangle(mode, x, y, w, h, fill, stime)
 end
 
 return GFX
-F:2:libKeys:0:2328:
+F:2:libGFX.dat:0:4:001
+
+F:3:libKeys:0:2328:
 -- Minecraft key code bindings
 -- See http://www.minecraftwiki.net/wiki/Key_codes for more info
 local nothing = 42
@@ -93,7 +95,9 @@ function keys.getName( _nKey )
 end
 return keys
 
-F:3:libWin:0:894:local Win = {}
+F:4:libKeys.dat:0:4:141
+
+F:5:libWin:0:894:local Win = {}
 function Win.drawWindow(x,y,w,h,caption)
   for lx=1,w do
     for ly=1,h do
@@ -135,3 +139,5 @@ function Win.drawWindow(x,y,w,h,caption)
   term.write(caption)
 end
 return Win
+F:6:libWin.dat:0:4:001
+

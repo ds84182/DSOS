@@ -1,5 +1,5 @@
 1
-F:1:boot:0:12803:term.clear()
+F:1:boot:0:12927:term.clear()
 term.setCursorPos(1, 1)
 local rfs = fs
 fs={}
@@ -311,6 +311,9 @@ function fs.open(path, mode)
 	end
 	if mode == "r" then
 		ret.at=1
+    if file == nil then
+      error("File "..mntn..":"..lpth.." Doesn't Exist In")
+    end
 		ret.content = file.content
 		setmetatable(ret, {__index=fs.__read})
 	elseif mode == "w" then
@@ -518,10 +521,11 @@ end
 --System Startup--
 mount.mount("HDD.img", "HDD")
 mount.mount("LIB.img", "LIB")
+mount.mount("SYSTEM.img", "SYS")
 term.clear()
 term.setCursorPos(1, 1)
-if fs.exists("HDD:/systemstartup.lsys") then
-	local sfil = fs.open("HDD:/systemstartup.lsys", "r")
+if fs.exists("SYS:/systemstartup.lsys") then
+	local sfil = fs.open("SYS:/systemstartup.lsys", "r")
 	assert(loadstring(sfil:readAll()))()
 	sfil:close()
 else

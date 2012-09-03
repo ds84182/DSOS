@@ -19,3 +19,48 @@ After that, Copy ALL of the .img files and place them in your computer.
 Reboot the Computer.
 
 There! You Installed DSOS!
+
+API
+===
+
+  Mount
+  =====
+
+    mount.mount(image, point)
+
+      Mounts an Image to Point. Can be accessed by Point:/
+
+    mount.flush(point)
+
+      Flushes data to disk
+
+    mount.unmount(point)
+
+      Unmounts the point, flushes.
+
+    mount.getMounted()
+
+      All of the mounted Images
+
+  FS
+  ==
+
+    fs.exists(path)
+
+      returns true if the path exist, else false
+
+    fs.list(path)
+
+      returns all of the files and directories in a path
+
+    fs.open(path, mode)
+
+      opens the file with mode
+
+        Modes:
+
+          R Read
+
+          W Write
+
+      look at the CC wiki to figure out how to read and write files

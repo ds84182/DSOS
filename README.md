@@ -1,4 +1,4 @@
-DSOS v0.01 Pre-Alpha
+DSOS v0.02 Pre-Alpha
 ====
 
 Repository For DSOS

@@ -1,0 +1,509 @@
+1
+F:1:boot:0:11919:term.clear()
+term.setCursorPos(1, 1)
+local rfs = fs
+fs={}
+mount={}
+local mounted={}
+defaultmount = "HDD"
+device = peripheral
+peripheral=nil
+function split(str, pat)
+		local t = {}  -- NOTE: use {n = 0} in Lua-5.0
+		local fpat = "(.-)" .. pat
+		local last_end = 1
+		local s, e, cap = str:find(fpat, 1)
+		while s do
+			if s ~= 1 or cap ~= "" then
+		table.insert(t,cap)
+			end
+			last_end = e+1
+			s, e, cap = str:find(fpat, last_end)
+		end
+		if last_end <= #str then
+			cap = str:sub(last_end)
+			table.insert(t, cap)
+		end
+		return t
+end
+local function encodeIMG(list)
+	local ret = ""
+	local numfile = #list.file
+	local numdir = #list.directory
+	local numentry = numfile+numdir
+	local nl = "\n"
+	ret = ret..numentry..nl
+	--Directory Entry: D:id:name:parentid
+	--File Entry: F:id:name:parentid:size:contents
+	for i=0, numdir-1 do
+		ret = ret.."D:"..(i+1)..":"..list.directory[i+1].name..":"..list.directory[i+1].pid..nl
+	end
+	for i=0, numfile-1 do
+		ret = ret.."F:"..(i+1)..":"..list.file[i+1].name..":"..list.file[i+1].pid..":"..list.file[i+1].size..":"..list.file[i+1].content..nl
+	end
+	return ret
+end
+
+local function decodeIMG(str)
+	local splitstr = split(str, "\n")
+	local numentry = tonumber(splitstr[1])
+	local directory = {}
+	local file = {}
+	local i = 2
+	local place = 1
+	while #file+#directory~=numentry do
+		if splitstr[i]:sub(1,1) == "D" then
+			local s = split(splitstr[i],":")
+			local id = tonumber(s[2])
+			local name = s[3]
+			local pid = tonumber(s[4])
+			directory[id] = {id=id,name=name,pid=pid,fullpath=""}
+		elseif splitstr[i]:sub(1,1) == "F" then
+			local inside = 1
+			local contents = ""
+			local contentstart = 0
+			local id = ""
+			local pid = ""
+			local name = ""
+			local size = ""
+			for r=3, #splitstr[i] do
+				if inside == 1 then --ID--
+					if splitstr[i]:sub(r,r) == ":" then
+						id = tonumber(id)
+						inside=2
+					else
+						id=id..splitstr[i]:sub(r,r)
+					end
+				elseif inside == 2 then --Name--
+					if splitstr[i]:sub(r,r) == ":" then
+						inside=3
+					else
+						name=name..splitstr[i]:sub(r,r)
+					end
+				elseif inside == 3 then --PID--
+					if splitstr[i]:sub(r,r) == ":" then
+						pid = tonumber(pid)
+						inside=4
+					else
+						pid=pid..splitstr[i]:sub(r,r)
+					end
+				elseif inside == 4 then --Size--
+					if splitstr[i]:sub(r,r) == ":" then
+						size = tonumber(size)
+						contentstart = r+1
+						break
+					else
+						size=size..splitstr[i]:sub(r,r)
+					end
+				end
+			end
+			contents = str:sub(place+contentstart+1,place+contentstart+size+1)
+			file[id] = {id=id,name=name,pid=pid, size=size, content=contents,fullpath=""}
+		end
+		place=place+#splitstr[i]+1
+		i=i+1
+	end
+	for i, v in pairs(directory) do
+		local parents = {}
+		local path = "/"
+		local at = v
+		while true do
+			if at ~= nil then
+				path="/"..at.name..path
+				at = directory[at.pid]
+			else
+				break
+			end
+		end
+		v.fullpath = path:sub(1,#path-1)
+	end
+	for i, v in pairs(file) do
+		local parents = {}
+		local path = "/"
+		local at = v
+		while true do
+			if at ~= nil then
+				path="/"..at.name..path
+				at = directory[at.pid]
+			else
+				break
+			end
+		end
+		v.fullpath = path:sub(1,#path-1)
+	end
+	return {directory=directory,file=file}
+end
+function mount.mount(img,point)
+	local limg = rfs.open(img, "r")
+	mounted[point] = {img, decodeIMG(limg:readAll())}
+	limg:close()
+end
+function mount.flush(point)
+	local simg = rfs.open(mounted[point][1], "w")
+	local out = encodeIMG(mounted[point][2])
+	simg.write(out)
+	simg.close()
+end
+function mount.unmount(point)
+	mount.flush(point)
+	mounted[point]=nil
+end
+function mount.getMounted()
+	local ret = {}
+	for i, v in pairs(mounted) do
+		table.insert(ret,i)
+	end
+	return ret
+end
+function fs.exists(path)
+	local ps = split(path, "/")
+	local mpth = mounted[defaultmount]
+	if ps[1]:sub(#ps[1],#ps[1]) == ":" then
+		if mounted[ps[1]:sub(1,#ps[1]-1)] == nil then
+			return false
+		else
+			mpth = mounted[ps[1]:sub(1,#ps[1]-1)]
+			table.remove(ps,1)
+		end
+	end
+	local lpth = "/"..table.concat(ps, "/")
+	if #ps == 0 then
+		return true
+	end
+	for i, v in pairs(mpth[2].directory) do
+		if v.fullpath == lpth then
+			return true
+		end
+	end
+	for i, v in pairs(mpth[2].file) do
+		if v.fullpath == lpth then
+			return true
+		end
+	end
+	return false
+end
+function fs.list(path)
+	local ps = split(path, "/")
+	local mpth = mounted[defaultmount]
+	local mntn = defaultmount
+	if ps[1]:sub(#ps[1],#ps[1]) == ":" then
+		if mounted[ps[1]:sub(1,#ps[1]-1)] == nil then
+			error("Mount point doesn't exist")
+		else
+			mpth = mounted[ps[1]:sub(1,#ps[1]-1)]
+			mntn = ps[1]:sub(1,#ps[1]-1)
+			table.remove(ps,1)
+		end
+	end
+	local lpth = "/"..table.concat(ps, "/")
+	local pid = -1
+	if #ps == 0 then
+		pid = 0
+	end
+	local ret = {}
+	for i, v in pairs(mpth[2].directory) do
+		if v.fullpath == lpth then
+			pid = v.id
+		end
+	end
+	if pid == -1 then
+		error("Directory Doesn't Exist")
+	end
+	for i, v in pairs(mpth[2].directory) do
+		if v.pid == pid then
+			table.insert(ret, mntn..":"..v.fullpath)
+		end
+	end
+	for i, v in pairs(mpth[2].file) do
+		if v.pid == pid then
+			table.insert(ret, mntn..":"..v.fullpath)
+		end
+	end
+	return ret
+end
+fs.__read = {}
+function fs.__read:readLine()
+	for i=self.at, #self.content+1 do
+		if self.content:sub(i,i) == "\n" or i>#self.content then
+			self.at=self.at+i+1
+			return self.content:sub(self.at-i-1,i)
+		end
+	end
+end
+function fs.__read:readAll()
+	return self.content:sub(self.at, #self.content)
+end
+function fs.__read:close()
+	self.at=nil
+	self.content=nil
+end
+fs.__write = {}
+function fs.__write:write(data)
+	self.content=self.content..data
+end
+function fs.__write:writeLine(data)
+	self.content=self.content..data.."\n"
+end
+function fs.__write:close()
+	self.file.content = self.content
+	self.file.size = #self.content
+	self.file = nil
+	self.content = nil
+end
+function fs.open(path, mode)
+	local ps = split(path, "/")
+	local mpth = mounted[defaultmount]
+	local mntn = defaultmount
+	if ps[1]:sub(#ps[1],#ps[1]) == ":" then
+		if mounted[ps[1]:sub(1,#ps[1]-1)] == nil then
+			error("Mount point doesn't exist")
+		else
+			mpth = mounted[ps[1]:sub(1,#ps[1]-1)]
+			mntn = ps[1]:sub(1,#ps[1]-1)
+			table.remove(ps,1)
+		end
+	end
+	local lpth = "/"..table.concat(ps, "/")
+	local pid = -1
+	local file = nil
+	local ret = {}
+	local pid = -1
+	if #ps == 1 then
+		pid = 0
+	end
+	for i, v in pairs(mpth[2].directory) do
+		if v.fullpath == lpth:sub(1,#lpth-#ps[#ps]-1) then
+			pid = v.id
+		end
+	end
+	if pid == -1 then
+		error("Directory Doesn't Exist")
+	end
+	for i, v in pairs(mpth[2].file) do
+		if v.fullpath == lpth then
+			file=v
+		end
+	end
+	if mode == "r" then
+		ret.at=1
+		ret.content = file.content
+		setmetatable(ret, {__index=fs.__read})
+	elseif mode == "w" then
+		if file == nil then
+			local id = #mpth[2].file+1
+			mpth[2].file[id]={id=id,name=ps[#ps],pid=pid, size=0, content="",fullpath=lpth}
+			file = mpth[2].file[id]
+		end
+		ret.file = file
+		ret.content = file.content
+		setmetatable(ret, {__index=fs.__write})
+	elseif mode == "a" then
+		ret.file = file
+		ret.content = file.content
+		setmetatable(ret, {__index=fs.__write})
+	else
+		error("Invalid Mode!")
+	end
+	return ret
+end
+function sleep( _nTime )
+	local timer = os.startTimer( _nTime )
+	repeat
+		local sEvent, param = coroutine.yield( "timer" )
+	until param == timer
+end
+function os.pullEvent(_filter)
+  if _filter ~= nil then
+    if _filter:sub(1,6) == "device" then
+      _filter = "peripheral".._filter:sub(7,#_filter)
+    end
+  end
+	local ret = {coroutine.yield(_filter)}
+  if ret[1]:sub(1,10) == "peripheral" then
+    ret[1] = "device"..ret[1]:sub(11,#ret[1])
+  end
+  return unpack(ret)
+end
+function write( sText )
+	local w,h = term.getSize()
+	local x,y = term.getCursorPos()
+	local nLinesPrinted = 0
+	local function newLine()
+		if y + 1 <= h then
+			term.setCursorPos(1, y + 1)
+		else
+			term.scroll(1)
+			term.setCursorPos(1, h)
+		end
+		x, y = term.getCursorPos()
+		nLinesPrinted = nLinesPrinted + 1
+	end
+	while string.len(sText) > 0 do
+		local whitespace = string.match( sText, "^[ \t]+" )
+		if whitespace then
+			term.write( whitespace )
+			x,y = term.getCursorPos()
+			sText = string.sub( sText, string.len(whitespace) + 1 )
+		end
+		local newline = string.match( sText, "^\n" )
+		if newline then
+			newLine()
+			sText = string.sub( sText, 2 )
+		end
+		local text = string.match( sText, "^[^ \t\n]+" )
+		if text then
+			sText = string.sub( sText, string.len(text) + 1 )
+			if string.len(text) > w then
+	while string.len( text ) > 0 do
+		if x > w then newLine() end
+		term.write( text )
+		text = string.sub( text, (w-x) + 2 )
+		x,y = term.getCursorPos()
+	end
+			else
+	if x + string.len(text) > w then newLine() end
+	term.write( text )
+	x,y = term.getCursorPos()
+			end
+		end
+	end
+	return nLinesPrinted
+end
+function print( ... )
+	local nLinesPrinted = 0
+	for n,v in ipairs( { ... } ) do
+		nLinesPrinted = nLinesPrinted + write( tostring( v ) )
+	end
+	nLinesPrinted = nLinesPrinted + write( "\n" )
+	return nLinesPrinted
+end
+function read( _sReplaceChar, _tHistory )
+  term.setCursorBlink( true )
+
+    local sLine = ""
+  local nHistoryPos = nil
+  local nPos = 0
+    if _sReplaceChar then
+	  _sReplaceChar = string.sub( _sReplaceChar, 1, 1 )
+  end
+
+  local w, h = term.getSize()
+  local sx, sy = term.getCursorPos()
+  local function redraw()
+	  local nScroll = 0
+	  if sx + nPos >= w then
+		  nScroll = (sx + nPos) - w
+	  end
+
+	  term.setCursorPos( sx, sy )
+	  term.write( string.rep(" ", w - sx + 1) )
+	  term.setCursorPos( sx, sy )
+	  if _sReplaceChar then
+		  term.write( string.rep(_sReplaceChar, string.len(sLine) - nScroll) )
+	  else
+		  term.write( string.sub( sLine, nScroll + 1 ) )
+	  end
+	  term.setCursorPos( sx + nPos - nScroll, sy )
+  end
+
+  while true do
+	  local sEvent, param = os.pullEvent()
+	  if sEvent == "char" then
+		  sLine = string.sub( sLine, 1, nPos ) .. param .. string.sub( sLine, nPos + 1 )
+		  nPos = nPos + 1
+		  redraw()
+
+	  elseif sEvent == "key" then
+		    if param == keys.enter then
+			  -- Enter
+			  break
+
+		  elseif param == keys.left then
+			  -- Left
+			  if nPos > 0 then
+				  nPos = nPos - 1
+				  redraw()
+			  end
+
+		  elseif param == keys.right then
+			  -- Right
+			  if nPos < string.len(sLine) then
+				  nPos = nPos + 1
+				  redraw()
+			  end
+
+		  elseif param == keys.up or param == keys.down then
+		-- Up or down
+			  if _tHistory then
+				  if param == keys.up then
+					  -- Up
+					  if nHistoryPos == nil then
+						  if #_tHistory > 0 then
+							  nHistoryPos = #_tHistory
+						  end
+					  elseif nHistoryPos > 1 then
+						  nHistoryPos = nHistoryPos - 1
+					  end
+				  else
+					  -- Down
+					  if nHistoryPos == #_tHistory then
+						  nHistoryPos = nil
+					  elseif nHistoryPos ~= nil then
+						  nHistoryPos = nHistoryPos + 1
+					  end
+				  end
+
+				  if nHistoryPos then
+			  sLine = _tHistory[nHistoryPos]
+			  nPos = string.len( sLine )
+		    else
+					  sLine = ""
+					  nPos = 0
+				  end
+				  redraw()
+		end
+		  elseif param == keys.backspace then
+			  -- Backspace
+			  if nPos > 0 then
+				  sLine = string.sub( sLine, 1, nPos - 1 ) .. string.sub( sLine, nPos + 1 )
+				  nPos = nPos - 1
+				  redraw()
+			  end
+		  end
+	  end
+  end
+
+  term.setCursorBlink( false )
+  term.setCursorPos( w + 1, sy )
+  print()
+
+  return sLine
+end
+library = {}
+function library.load( _sName )
+	if fs.exists("LIB:/lib".._sName) then
+		local libhan = fs.open("LIB:/lib".._sName, "r")
+		local lib = assert(loadstring(libhan:readAll()))()
+		libhan:close()
+		return lib
+	else
+		error("lib".._sName.." Doesn't Exist")
+	end
+end
+--System Startup--
+mount.mount("HDD.img", "HDD")
+mount.mount("LIB.img", "LIB")
+term.clear()
+term.setCursorPos(1, 1)
+if fs.exists("HDD:/systemstartup.lsys") then
+	local sfil = fs.open("HDD:/systemstartup.lsys", "r")
+	assert(loadstring(sfil:readAll()))()
+	sfil:close()
+else
+	--Sometime in the future, find a sound peripheral and play C# three times--
+	term.clear()
+	term.setCursorPos(1,1)
+	print("System File, systemstartup.lsys, Is Not Found. ABORT SYSTEM STARTUP, ERROR CODE: 1")
+	sleep(300)
+end
+

@@ -1,0 +1,21 @@
+2
+F:1:DeviceDiscovery.lexe:0:254:while true do
+  local e, s = os.pullEvent()
+  if e == "device" then
+    print("Unknown Device ''"..device.getType(s).."'' Connected On "..s.." Side")
+  elseif e == "device_detach" then
+    print("Unknown Device Disconnected From "..s.." Side")
+  end
+end
+
+F:2:systemstartup.lsys:0:270:local keys = library.load("Keys")
+local Win=library.load("Win")
+local DD = fs.open("HDD:/DeviceDiscovery.lexe", "r")
+loadstring(DD:readAll())()
+DD:close()
+while true do
+  Win.drawWindow(1,1,25,9,"Hallo?")
+  term.setCursorPos(1,11)
+  print(pcall(loadstring(read())))
+end
+

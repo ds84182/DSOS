@@ -1,0 +1,6 @@
+print("Restarting to DSOS")
+for i, v in pairs(fs.list("/.DSOS/")) do
+	fs.move("/.DSOS/"..v,v)
+end
+fs.delete("/.DSOS")
+os.reboot()

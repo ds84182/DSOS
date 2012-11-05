@@ -1,7 +1,31 @@
 if fs.exists("bios.lua") then
-	local FH = fs.open("bios.lua","r")
-	loadstring(FH:readAll())()
-	FH:close()
+	local hash = 5151
+	local fh = fs.open("bios.lua","r")
+	local s = fh.readAll()
+	fh.close()
+	local function comb(s)
+		local n = 1
+		for i=1, #s do
+			if i%2 == 0 then
+				n = n + s:byte(i)
+			else
+				n = n - s:byte(i)
+			end
+		end
+		return n
+	end
+	local nh = comb(s) 
+	if nh == hash then
+		term.write("Hash correct! Launching DSOS!")
+		loadstring(s,"bios")()
+	else
+		term.write(nh)
+		--term.write("Hash incorrect! Restarting to CraftOS!")
+		coroutine.yield("i need a pony!")
+		os.reboot()
+		fs.move("bios.lua","ibios.lua")
+		os.restart()
+	end
 else
 	-- Install lua parts of the os api
 	function os.version()

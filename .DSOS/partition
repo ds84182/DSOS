@@ -1,0 +1,23 @@
+local args = {...}
+local newfs = args[1]
+local part = {}
+local partition = {}
+function partition.loadAll()
+	for i, v in pairs(fs.list(".DSOS/part")) do
+		if v:sub(#v-3) == ".nfs" then
+			local name = v:match("([^%.]+)")
+			part[name] = newfs.decode(".DSOS/part/"..v)
+		end
+	end
+end
+
+function partition.flushAll()
+	for i, v in pairs(part) do
+		newfs.encode(".DSOS/part/"..i..".nfs",v)
+	end
+end
+
+function partition.get(name)
+	return part[name]
+end
+return partition

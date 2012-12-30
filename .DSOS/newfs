@@ -1,0 +1,116 @@
+--NewFS, a new fs format for DSOS because xmlfs is shizzzzzzz--
+--[[Syntax:
+Like xmlfs, I have the files encoded as hex, but unlike xmlfs, it's faster!
+The filename extension is nfs
+The file itself:
+DIR:DIRNAME
+	FILE:FILENAME:CONTENT
+Yes! Just like ArgPU ASM!
+And, for Mandrake, it's an api!
+]]--
+local function num2hex(num)
+    local hexstr = '0123456789abcdef'
+    local s = ''
+    while num > 0 do
+        local mod = math.fmod(num, 16)
+        s = string.sub(hexstr, mod+1, mod+1) .. s
+        num = math.floor(num / 16)
+    end
+    if s == '' then s = '0' end
+    return s
+end
+
+
+local function hexifiy(s)
+	local r = ""
+	for i=1, #s do
+		local c = s:sub(i,i)
+		local n = c:byte()
+		local e = num2hex(n)
+		r = r..e.." "
+	end
+	return r:sub(1,#r-1)
+end
+
+local function dehexifiy(s)
+	local r = ""
+	for match in s:gmatch("(%x+)") do
+		local n = tonumber(match,16)
+		if n ~= nil then
+			r = r..string.char(n)
+		end
+	end
+	return r
+end
+local newfs = {}
+function newfs.decode(file)
+	local root = {child={},mft={}}
+	local fh = fs.open(file,"r")
+	local parents = {root}
+	while true do
+		local path = "/"
+		for i=2, #parents do
+			path = path..parents[i].name.."/"
+		end
+		local str = fh.readLine()
+		if str == nil then
+			break
+		end
+		local str, level = str:gsub("	","")
+		local etype, ename = str:match("^([^:]+):([^:]+)")
+		for i =1, (#parents-1)-level do
+			parents[#parents] = nil
+		end
+		if etype == "DIR" then
+			local nd = {}
+			nd.type = "DIR"
+			nd.name = ename
+			nd.child = {}
+			parents[#parents].child[#parents[#parents].child+1] = nd
+			parents[#parents+1] = nd
+			root.mft[path..ename] = nd
+		elseif etype == "FILE" then
+			local etype, ename, econt = str:match("^([^:]+):([^:]+):(.+)")
+			local nf = {}
+			nf.type = "FILE"
+			nf.name = ename
+			nf.content = dehexifiy(econt)
+			parents[#parents].child[#parents[#parents].child+1] = nf
+			root.mft[path..ename] = nf
+		else
+			error("Unknown header "..etype)
+		end
+	end
+	fh.close()
+	return root
+end
+
+function newfs.encode(file, root)
+	local fh = fs.open(file,"w")
+	local parent = {root}
+	local parentnext = {1}
+	while true do
+		local cpar = parent[#parent]
+		local cnex = parentnext[#parent]
+		if cpar.child[cnex] == nil then
+			parent[#parent] = nil
+			parentnext[#parentnext] = nil
+		else
+			if cpar.child[cnex].type == "DIR" then
+				fh.writeLine(string.rep("	",#parent-1).."DIR:"..cpar.child[cnex].name)
+				parent[#parent+1] = cpar.child[cnex]
+				parentnext[#parent] = 1
+				parentnext[#parent-1] = cnex+1
+			elseif cpar.child[cnex].type == "FILE" then
+				fh.writeLine(string.rep("	",#parent-1).."FILE:"..cpar.child[cnex].name..":"..hexifiy(cpar.child[cnex].content))
+				parentnext[#parent] = cnex+1
+			end
+		end
+		if #parent == 0 then
+			break
+		end
+	end
+	fh.close()
+end
+
+return newfs

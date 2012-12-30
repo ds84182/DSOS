@@ -1,0 +1,126 @@
+local ta = 1
+local function write(s)
+	term.setCursorPos(1,ta)
+	term.write(s)
+	ta = ta+1
+end
+os.pullEvent = coroutine.yield
+os.pullEventRaw = os.pullEvent
+function sleep( _nTime )
+    local timer = os.startTimer( _nTime )
+	repeat
+		local sEvent, param = os.pullEvent( "timer" )
+	until param == timer
+end
+peripheral.wrap = function( _sSide )
+	if peripheral.isPresent( _sSide ) then
+		local tMethods = peripheral.getMethods( _sSide )
+		local tResult = {}
+		for n,sMethod in ipairs( tMethods ) do
+			tResult[sMethod] = function( ... )
+				return peripheral.call( _sSide, sMethod, ... )
+			end
+		end
+		return tResult
+	end
+	return nil
+end
+local fh = fs.open(".DSOS/newfs","r")
+local newfs = loadstring(fh.readAll(),"newfs")()
+fh.close()
+--Safeguards--
+if not fs.exists(".DSOS/part") then
+	write("DSOS is broken! : Partition Directory is missing!")
+	coroutine.yield("blah")
+end
+if not fs.exists(".DSOS/part/HDD.nfs") then
+	write("DSOS is broken! : HDD Partition is missing!")
+	coroutine.yield("blah")
+end
+local fh = fs.open(".DSOS/partition","r")
+local partition = loadstring(fh.readAll(),"partition")(newfs)
+fh.close()
+
+partition.loadAll()
+
+--Load fshelper--
+local fh = fs.open(".DSOS/fshlp","r")
+local fshlp = loadstring(fh.readAll(),"fshlp")(partition)
+fh.close()
+
+--Load JSON--
+local fh = fs.open(".DSOS/JSON","r")
+local JSON = loadstring(fh.readAll(),"JSON")()
+fh.close()
+
+--Load pipe--
+local fh = fs.open(".DSOS/pipe","r")
+local pipe = loadstring(fh.readAll(),"pipe")()
+fh.close()
+
+--Load task--
+local fh = fs.open(".DSOS/task","r")
+local task = loadstring(fh.readAll(),"task")(pipe)
+fh.close()
+
+--Load service--
+local fh = fs.open(".DSOS/service","r")
+local service = loadstring(fh.readAll(),"service")(task)
+fh.close()
+
+--Load new fs and make copy of old fs--
+local rfs = fs
+local obj = fshlp.findFile("SYS","","fs")
+if obj == nil then
+	write("FS IS NIL")
+	os.pullEvent("ioasf")
+end
+local fs = loadstring(obj.content,"fs")(fshlp)
+write("No more primitive file loading!")
+--Load api--
+local fh = rfs.open(".DSOS/api","r")
+local api = loadstring(fh.readAll(),"api")(fs,loadstring)
+fh.close()
+
+if not fs.exists("SYS:/cfg/os") then
+	fs.makeDir("SYS:/cfg/os")
+	local enc = JSON:encode_pretty({SYSLOCK=true})
+	local fh = fs.open("SYS:/cfg/os/sys.cfg","w")
+	fh.write(enc)
+	fh.close()
+end
+local fh = fs.open("SYS:/cfg/os/sys.cfg","r")
+local syscfg = JSON:decode(fh.readAll())
+fh.close()
+
+--Try to load the rednet service--
+local fh = fs.open("SYS:/service/rednet","r")
+loadstring(fh.readAll(),"rednet")(service,api)
+fh.close()
+
+--Try to load the gps service--
+local fh = fs.open("SYS:/service/gps","r")
+loadstring(fh.readAll(),"gps")(service,api)
+fh.close()
+
+task.add(getfenv(),function()
+	local pos = service.get("Position")
+	local rednet = service.get("Rednet")
+	rednet.open("right")
+	while true do
+		sleep(0)
+		term.setCursorPos(1,1)
+		term.clear()
+		local x, y, z = pos.getPosition()
+		if x ~= nil and y ~= nil and z ~= nil then
+			term.write("Position: "..x..", "..y..", "..z)
+		else
+			term.write("Unknown Position")
+		end
+	end
+end,"Position Note")
+
+partition.flushAll()
+while true do
+	task.update()
+end

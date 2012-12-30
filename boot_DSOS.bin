@@ -132,7 +132,7 @@ local fh = fs.open("SYS:/service/gps","r")
 loadstring(fh.readAll(),"gps")(service,api)
 fh.close()
 
-task.add(getfenv(),function()
+--[[task.add(getfenv(),function()
 	local pos = service.get("Position")
 	local rednet = service.get("Rednet")
 	rednet.open("right")
@@ -147,7 +147,7 @@ task.add(getfenv(),function()
 			term.write("Unknown Position")
 		end
 	end
-end,"Position Note")
+end,"Position Note")]]
 
 partition.flushAll()
 while true do

@@ -1,0 +1,38 @@
+local args = {...}
+local version = args[1]
+local parentdir = "https://raw.github.com/ds84182/DSOS/master/"
+local vdath = http.get(parentdir.."versiondata/version")
+local vdatnum = tonumber(vdath.readAll())
+vdath.close()
+if vdatnum > version then
+	--Start updating--
+	--Find the files that need to be updated by looking in versiondata/changed--
+	term.clear()
+	local w,h  = term.getSize()
+	if term.isColor() then
+		term.setBackgroundColor(0x80)
+		for y=2, h-2 do
+			term.setCursorPos(1,y)
+			term.clearLine()
+		end
+	end
+	term.setCursorPos(1,math.floor((h-2)/2)+1)
+	term.write("Updating... Please Wait...")
+	local filelist = http.get(parentdir.."versiondata/changed")
+	while true do
+		sleep(0)
+		local fname = filelist.readLine()
+		if fname == nil then
+			break
+		end
+		local webfh = http.get(parentdir..fname)
+		local fh = fs.open(fname,"w")
+		fh.write(webfh.readAll())
+		fh.close()
+		webfh.close()
+	end
+	term.clearLine()
+	term.write("Finished Updating!")
+	sleep(1/2)
+	os.reboot()
+end

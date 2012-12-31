@@ -46,4 +46,5 @@ if vdatnum > version then
 	term.write("Finished Updating!")
 	sleep(1/2)
 	os.reboot()
+	coroutine.yield()
 end

@@ -1,5 +1,5 @@
 local ta = 1
-local version = 007
+local version = 008
 local function write(s)
 	term.setCursorPos(1,ta)
 	term.write(s)
@@ -157,12 +157,16 @@ end,"Position Note")]]
 
 partition.flushAll()
 
-local sandbox_extras = {fs=fs,service={get=service.get},api}
+local sandbox_extras = {fs=fs,service={get=service.get},api=api}
 
 local fh = fs.open("SYS:/programs/shell","r")
 local c = loadstring(fh.readAll())
 fh.close()
+local w, h = term.getSize()
+local pid = pipe.new(w,h-1)
+sandbox_extras.term = pipe.getAPI(pid)
 task.add(sandbox.new(sandbox_extras),c,"Shell")
+sandbox_extras.term = nil
 
 while true do
 	task.update()

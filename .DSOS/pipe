@@ -46,6 +46,7 @@ function pipe.isVisible(id)
 	return pipes[id].visible == true
 end
 function pipe.draw(id)
+	term.setCursorBlink(false)
 	local tmp = {t="",fg=-1,bg=-1}
 	local p = pipes[id]
 	if p.visible then

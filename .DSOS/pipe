@@ -29,6 +29,7 @@ function pipe.new(w,h)
 	ret.visible = true
 	ret.cpos = {x=1,y=1}
 	ret.con = false
+	ret.pos = {x=0,y=0}
 	ret.out = 0
 	pipes[id] = ret
 	return id
@@ -49,7 +50,7 @@ function pipe.draw(id)
 	local p = pipes[id]
 	if p.visible then
 		for y=1, p.h do
-			term.setCursorPos(1,y)
+			term.setCursorPos(1+p.pos.x,y+p.pos.y)
 			tmp = {t="",fg=-1,bg=-1}
 			for x=1, p.w do
 				if p.fg[x][y] ~= tmp.fg then

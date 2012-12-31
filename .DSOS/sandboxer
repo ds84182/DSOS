@@ -1,5 +1,5 @@
 local gfe = getfenv
-lcaol sfe = setfenv
+local sfe = setfenv
 local ols = loadstring
 local patches = {}
 patches.getfenv = function(l)

@@ -1,6 +1,8 @@
 --Ugh... I have to remake the term api--
 local pipe = {}
 local pipes = {}
+local cursoron = false
+local cursorpos = {x=1,y=1}
 local function exists(p,x,y)
 	if pipes[p][x] == nil then return false end
 	if pipes[p][x][y] == nil then return false end
@@ -25,9 +27,15 @@ function pipe.new(w,h)
 		end
 	end
 	ret.visible = true
+	ret.cpos = {x=1,y=1}
+	ret.con = false
 	ret.out = 0
 	pipes[id] = ret
 	return id
+end
+function pipe.afterDraw()
+	term.setCursorBlink(cursoron)
+	term.setCursorPos(cursorpos.x,cursorpos.y)
 end
 function pipe.setVisible(id,v)
 	pipes[id].visible = v==true
@@ -62,6 +70,10 @@ function pipe.draw(id)
 				tmp.t = tmp.t..p[x][y]
 			end
 			term.write(tmp.t)
+		end
+		if p.con then
+			cursoron = true
+			cursorpos = p.cpos
 		end
 	end
 end

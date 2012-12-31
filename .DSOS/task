@@ -11,6 +11,7 @@ local function render()
 	for i,v in pairs(pipe.getAllPipes()) do
 		pipe.draw(i)
 	end
+	pipe.afterDraw()
 end
 function task.add(env, func, name, args)
 	local id = 1

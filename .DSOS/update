@@ -29,7 +29,7 @@ if vdatnum > version then
 	fh.close()
 	
 	--Delete .DSOS, boot_DSOS.bin, and os.lst--
-	fs.delete(".DSOS")
+	fs.delete("/.DSOS")
 	fs.delete("boot_DSOS.bin")
 	fs.delete("os.lst")
 	

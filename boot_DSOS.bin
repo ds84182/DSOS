@@ -1,4 +1,4 @@
-local version = 016
+local version = 017
 colors = {
 white = 1,
 orange = 2,
@@ -397,6 +397,12 @@ fh.close()
 local fh = fs.open("SYS:/service/gps","r")
 loadstring(fh.readAll(),"gps")(service,api)
 fh.close()
+
+--Try to load the ticker service--
+local fh = fs.open("SYS:/service/ticker","r")
+loadstring(fh.readAll(),"ticker")(service,api,pipe)
+fh.close()
+service.get("Ticker").add("Hello, I'm a ticker :D")
 
 --[[task.add(getfenv(),function()
 	local pos = service.get("Position")

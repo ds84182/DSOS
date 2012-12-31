@@ -36,6 +36,7 @@ end
 function pipe.afterDraw()
 	term.setCursorBlink(cursoron)
 	term.setCursorPos(cursorpos.x,cursorpos.y)
+	cursoron = false
 end
 function pipe.setVisible(id,v)
 	pipes[id].visible = v==true

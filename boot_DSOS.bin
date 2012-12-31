@@ -99,8 +99,8 @@ local service = loadstring(fh.readAll(),"service")(task)
 fh.close()
 
 --Load sandbox--
-local fh = fs.open(".DSOS/sandbox","r")
-local sandbox = loadstring(fh.readAll(),"sandbox")()
+local fh = fs.open(".DSOS/sandboxer","r")
+local sandbox = loadstring(fh.readAll(),"sandboxer")()
 fh.close()
 
 --Load new fs and make copy of old fs--

@@ -37,7 +37,7 @@ if vdatnum > version then
 	loadstring(code)()
 	
 	--Rewrite HDD.nfs--
-	lcoal fh = fs.open(".DSOS/part/HDD.nfs","w")
+	local fh = fs.open(".DSOS/part/HDD.nfs","w")
 	fs.write(hdd_dat)
 	fh.close()
 	

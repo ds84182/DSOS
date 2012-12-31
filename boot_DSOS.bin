@@ -1,5 +1,5 @@
 local ta = 1
-local version = 004
+local version = 005
 local function write(s)
 	term.setCursorPos(1,ta)
 	term.write(s)

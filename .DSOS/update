@@ -18,19 +18,30 @@ if vdatnum > version then
 	end
 	term.setCursorPos(1,math.floor((h-2)/2)+1)
 	term.write("Updating... Please Wait...")
-	local filelist = http.get(parentdir.."versiondata/changed")
-	while true do
-		sleep(0)
-		local fname = filelist.readLine()
-		if fname == nil then
-			break
-		end
-		local webfh = http.get(parentdir..fname)
-		local fh = fs.open(fname,"w")
-		fh.write(webfh.readAll())
-		fh.close()
-		webfh.close()
-	end
+	
+	local webfh = http.get(parentdir.."install")
+	local code = webfh.readAll()
+	webfh.close()
+	
+	--Now, get all HDD.nfs contents
+	lcoal fh = fs.open(".DSOS/part/HDD.nfs","r")
+	local hdd_dat = fh.readAll()
+	fh.close()
+	
+	--Delete .DSOS, boot_DSOS.bin, and os.lst--
+	fs.delete(".DSOS")
+	fs.delete("boot_DSOS.bin")
+	fs.delete("os.lst")
+	
+	--Run updater--
+	loadstring(code)()
+	
+	--Rewrite HDD.nfs--
+	lcoal fh = fs.open(".DSOS/part/HDD.nfs","w")
+	fs.write(hdd_dat)
+	fh.close()
+	
+	term.setCursorPos(1,math.floor((h-2)/2)+1)
 	term.clearLine()
 	term.write("Finished Updating!")
 	sleep(1/2)

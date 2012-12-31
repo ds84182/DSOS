@@ -1,5 +1,5 @@
 local ta = 1
-local version = 006
+local version = 007
 local function write(s)
 	term.setCursorPos(1,ta)
 	term.write(s)
@@ -51,8 +51,9 @@ end
 if http then
 	write("Checking for updates")
 	local fh = fs.open(".DSOS/update","r")
-	loadstring(fh.readAll(),"update")(version)
+	local c = fh.readAll()
 	fh.close()
+	loadstring(c,"update")(version)
 end
 local fh = fs.open(".DSOS/newfs","r")
 local newfs = loadstring(fh.readAll(),"newfs")()
@@ -95,6 +96,11 @@ fh.close()
 --Load service--
 local fh = fs.open(".DSOS/service","r")
 local service = loadstring(fh.readAll(),"service")(task)
+fh.close()
+
+--Load sandbox--
+local fh = fs.open(".DSOS/sandbox","r")
+local sandbox = loadstring(fh.readAll(),"sandbox")()
 fh.close()
 
 --Load new fs and make copy of old fs--
@@ -150,6 +156,14 @@ fh.close()
 end,"Position Note")]]
 
 partition.flushAll()
+
+local sandbox_extras = {fs=fs,service={get=service.get},api}
+
+local fh = fs.open("SYS:/programs/shell","r")
+local c = loadstring(fh.readAll())
+fh.close()
+task.add(sandbox.new(sandbox_extras),c,"Shell")
+
 while true do
 	task.update()
 end

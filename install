@@ -52,6 +52,12 @@ fh.write(webfh.readAll())
 fh.close()
 webfh.close()
 
+local webfh = http.get(parentdir..'.DSOS/sandboxer')
+local fh = fs.open('.DSOS/sandboxer',"w")
+fh.write(webfh.readAll())
+fh.close()
+webfh.close()
+
 local webfh = http.get(parentdir..'.DSOS/service')
 local fh = fs.open('.DSOS/service',"w")
 fh.write(webfh.readAll())

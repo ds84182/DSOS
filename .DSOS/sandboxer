@@ -1,0 +1,58 @@
+local gfe = getfenv
+lcaol sfe = setfenv
+local ols = loadstring
+local patches = {}
+patches.getfenv = function(l)
+	local ret = gfe(l)
+	if ret == gfe(0) then
+		error("Access to the global enviroment is denied!")
+	else
+		return ret
+	end
+end
+
+patches.setfenv = function(l)
+	error("Access to setfenv is denied!")
+end
+
+patches.loadstring = function(s)
+	local f, e = ols(s)
+	if f then
+		sfe(f,gfe(1))
+		return f
+	else
+		return nil, e
+	end
+end
+
+local function copy(t)
+	local ret = {}
+	for i,v in pairs(t) do
+		if type(v) == "table" then
+			ret[i] = copy(v)
+		else
+			ret[i] = v
+		end
+	end
+	return ret
+end
+
+local sandbox = {}
+
+function sandbox.new(extra)
+	--Creates a new sandbox--
+	local box = copy(gfe())
+	for i, v in pairs(patches) do
+		box[i] = v
+	end
+	for i, v in pairs(extra or {}) do
+		if type(v) == "table" then
+			box[i] = copy(v)
+		else
+			box[i] = v
+		end
+	end
+	return box
+end
+
+return sandbox

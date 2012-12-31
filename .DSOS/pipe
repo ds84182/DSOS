@@ -84,6 +84,10 @@ function pipe.getAPI(id)
 	local term = {}
 	local tx, ty = 1, 1
 	local fg, bg = colors.white, colors.black
+	local p = pipes[id]
+	function term.setCursorBlink(b)
+		p.con = b == true
+	end
 	function term.getCursorPos()
 		return tx, ty
 	end
@@ -91,6 +95,8 @@ function pipe.getAPI(id)
 		if type(x) ~= "number" or type(y) ~= "number" then error("expected number, number",1) end
 		tx = x
 		ty = y
+		p.cpos.x = x
+		p.cpos.y = y
 	end
 	function term.setBackgroundColor(c)
 		if type(c) ~= "number" then error("expected number",1) end
@@ -110,6 +116,7 @@ function pipe.getAPI(id)
 			end
 		end
 		tx = tx+#t
+		p.cpos.x = tx
 	end
 	function term.isColor()
 		return true

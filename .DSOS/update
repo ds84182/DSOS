@@ -38,7 +38,7 @@ if vdatnum > version then
 	
 	--Rewrite HDD.nfs--
 	local fh = fs.open(".DSOS/part/HDD.nfs","w")
-	fs.write(hdd_dat)
+	fh.write(hdd_dat)
 	fh.close()
 	
 	term.setCursorPos(1,math.floor((h-2)/2)+1)

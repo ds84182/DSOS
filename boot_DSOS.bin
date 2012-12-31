@@ -1,5 +1,5 @@
 local ta = 1
-local version = 005
+local version = 006
 local function write(s)
 	term.setCursorPos(1,ta)
 	term.write(s)
@@ -51,7 +51,7 @@ end
 if http then
 	write("Checking for updates")
 	local fh = fs.open(".DSOS/update","r")
-	local newfs = loadstring(fh.readAll(),"update")(version)
+	loadstring(fh.readAll(),"update")(version)
 	fh.close()
 end
 local fh = fs.open(".DSOS/newfs","r")

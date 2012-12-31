@@ -24,7 +24,7 @@ if vdatnum > version then
 	webfh.close()
 	
 	--Now, get all HDD.nfs contents
-	lcoal fh = fs.open(".DSOS/part/HDD.nfs","r")
+	local fh = fs.open(".DSOS/part/HDD.nfs","r")
 	local hdd_dat = fh.readAll()
 	fh.close()
 	

@@ -37,11 +37,22 @@ local function copy(t)
 	return ret
 end
 
+local function renv(t,env)
+	for i,v in pairs(t) do
+		if type(v) == "table" and v ~= t then
+			ret[i] = renv(v,env)
+		elseif type(v) == "function" then
+			setfenv(v,env)
+		end
+	end
+end
+
 local sandbox = {}
 
 function sandbox.new(extra)
 	--Creates a new sandbox--
 	local box = copy(gfe())
+	renv(box,box)
 	for i, v in pairs(patches) do
 		box[i] = v
 	end

@@ -35,6 +35,8 @@ if http then
 			else
 				return
 			end
+		else
+			return
 		end
 	end
 	local fl = download("filelist")

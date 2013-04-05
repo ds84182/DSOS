@@ -1,12 +1,14 @@
 local versionChecking = true
 if http then
 	print("HTTP is enabled!")
+	print(updateURL)
 	if not versionChecking then
 		--Outside the OS, specify vars
 		updateURL = "https://raw.github.com/ds84182/DSOS/master/"
 	end
 	local function download(path)
 		local wh = http.get(updateURL..path)
+		print(wh)
 		local t = wh.readAll()
 		wh.close()
 		return t
@@ -17,6 +19,7 @@ if http then
 			print("Updater needs root")
 			return
 		end
+		print("Downloading version data")
 		local s = download("version")
 		local split = {}
 		for line in s:gmatch("[^\n]+") do

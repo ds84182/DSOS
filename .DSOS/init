@@ -105,6 +105,7 @@ do
 						end
 					else
 						--TODO: Store errors in a error log--
+						error(e)
 					end
 				else
 					--Coroutine died.--
@@ -128,6 +129,7 @@ do
 						end
 					else
 						--TODO: Store errors in a error log--
+						error(e)
 					end
 				else
 					--Coroutine died.--
@@ -160,6 +162,7 @@ do
 			if task then
 				return task.id
 			end
+			at = at+1
 		end
 	end
 	
@@ -219,31 +222,34 @@ do
 	end
 end
 
+local oldfs = fs
+
 do
+	fs = {}
 	--fs overrides to run everything from .DSOS--
 	local function formPath(p)
-		return ".DSOS/"..fs.combine("",p)
+		return ".DSOS/"..oldfs.combine("",p)
 	end
-	local oldopen = fs.open
 	function fs.open(path,mode)
-		return fs.open(formPath(p),mode)
+		return oldfs.open(formPath(path),mode)
 	end
-	local oldmove = fs.move
 	function fs.move(p1,p2)
-		return oldmove(formPath(p1),formPath(p2))
+		return oldfs.move(formPath(p1),formPath(p2))
 	end
-	local oldcopy = fs.copy
 	function fs.copy(p1,p2)
-		return oldcopy(formPath(p1),formPath(p2))
+		return oldfs.copy(formPath(p1),formPath(p2))
 	end
-	local olddelete = fs.delete
 	function fs.delete(p1)
-		return olddelete(formPath(p1))
+		return oldfs.delete(formPath(p1))
 	end
-	local oldmakeDir = fs.makeDir
 	function fs.makeDir(p1)
-		return oldmakeDir(formPath(p1))
+		return oldfs.makeDir(formPath(p1))
 	end
+	function fs.exists(p1)
+		return oldfs.exists(formPath(p1))
+	end
+	fs.getName = oldfs.getName
+	fs.combine = oldfs.combine
 end
 
 loadfile("enviromentVars")()
@@ -253,10 +259,11 @@ local function proc0()
 		error("Process 0 lacks Root Permision")
 	end
 	if fs.exists("autostart-root") then
+		print("Autostart root")
 		local fh = fs.open("autostart-root","r")
 		local line = fh.readLine()
 		while line do
-			os.run("bin/"..line)
+			loadfile("bin/"..line)()
 			line = fh.readLine()
 		end
 		fh.close()

@@ -31,6 +31,7 @@ if http then
 			local e,k = os.pullEvent("key")
 			if k == keys.enter then
 				print("Starting update...")
+				fs = os.getOldFS()
 			else
 				return
 			end

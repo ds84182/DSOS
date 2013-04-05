@@ -142,6 +142,36 @@ do
 	end
 end
 
+local oldfs = fs
+
+do
+	fs = {}
+	--fs overrides to run everything from .DSOS--
+	local function formPath(p)
+		return ".DSOS/"..oldfs.combine("",p)
+	end
+	function fs.open(path,mode)
+		return oldfs.open(formPath(path),mode)
+	end
+	function fs.move(p1,p2)
+		return oldfs.move(formPath(p1),formPath(p2))
+	end
+	function fs.copy(p1,p2)
+		return oldfs.copy(formPath(p1),formPath(p2))
+	end
+	function fs.delete(p1)
+		return oldfs.delete(formPath(p1))
+	end
+	function fs.makeDir(p1)
+		return oldfs.makeDir(formPath(p1))
+	end
+	function fs.exists(p1)
+		return oldfs.exists(formPath(p1))
+	end
+	fs.getName = oldfs.getName
+	fs.combine = oldfs.combine
+end
+
 do
 	--Installing std DSOS functions
 	
@@ -204,6 +234,14 @@ do
 		task.perms.permaroot = false
 		return task.id
 	end
+	
+	function os.getOldFS()
+		if isRoot(getCallingPID()) then
+			return oldfs
+		else
+			return fs -- /troll
+		end
+	end
 end
 
 do
@@ -220,36 +258,6 @@ do
 		_G[v] = nil
 		print("Sucessfully unloaded API "..v)
 	end
-end
-
-local oldfs = fs
-
-do
-	fs = {}
-	--fs overrides to run everything from .DSOS--
-	local function formPath(p)
-		return ".DSOS/"..oldfs.combine("",p)
-	end
-	function fs.open(path,mode)
-		return oldfs.open(formPath(path),mode)
-	end
-	function fs.move(p1,p2)
-		return oldfs.move(formPath(p1),formPath(p2))
-	end
-	function fs.copy(p1,p2)
-		return oldfs.copy(formPath(p1),formPath(p2))
-	end
-	function fs.delete(p1)
-		return oldfs.delete(formPath(p1))
-	end
-	function fs.makeDir(p1)
-		return oldfs.makeDir(formPath(p1))
-	end
-	function fs.exists(p1)
-		return oldfs.exists(formPath(p1))
-	end
-	fs.getName = oldfs.getName
-	fs.combine = oldfs.combine
 end
 
 loadfile("enviromentVars")()

@@ -222,7 +222,7 @@ end
 do
 	--fs overrides to run everything from .DSOS--
 	local function formPath(p)
-		return ".DSOS/"..fs.combine("",path)
+		return ".DSOS/"..fs.combine("",p)
 	end
 	local oldopen = fs.open
 	function fs.open(path,mode)

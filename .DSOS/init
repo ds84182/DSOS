@@ -1,0 +1,269 @@
+loadfile("enviromentVars")()
+do
+	function table.newReadOnlyTable(t)
+		--It also gives you a handy disabler :)
+		local disabled = {false}
+		local proxy = {}
+		local mt = {       -- create metatable
+			__index = t,
+			__newindex = function (t,k,v)
+				--Do nothing. /troll
+				if disabled[1] then
+					t[k] = v
+				end
+			end}
+		setmetatable(proxy, mt)
+		return proxy, disabled
+    end
+	function table.newProtectedTable(tab,protect)
+		--This will protect the items specified by protect
+		--It also gives you a handy disabler :)
+		local disabled = {false}
+		local proxy = {}
+		local mt = {       -- create metatable
+			__index = tab,
+			__newindex = function (t,k,v)
+				if t == tab then
+					if not protect[k] or disabled[1]  then
+						t[k] = v
+					end
+				end
+			end}
+		setmetatable(proxy, mt)
+		return proxy, disabled
+	end
+end
+
+local tasker = {}
+do
+	local sch = {}
+	local nullsch = {}
+	local proc = {}
+	function tasker.addTask(func,args,id)
+		if not id then
+			id = math.random(1,2^16)
+			while proc[id] do
+				id = math.random(1,2^16)
+			end
+		end
+		local perms = {}
+		local env = {}
+		local p = {}
+		if id == 0 and proc[0] == nil then
+			perms={root=true,permaroot=true}
+		end
+		setmetatable(env,{__index = _G})
+		env.procinfo = {id = id}
+		local procinfo = env.procinfo
+		local disabler
+		local disablerPerms
+		procinfo.perms, disablerPerms = table.newReadOnlyTable(perms)
+		env, disabler = table.newProtectedTable(env,{procinfo=true,os=true})
+		setfenv(func,env)
+		p.func = func
+		p.perms = perms
+		p.id = id
+		p.env = env
+		p.disablers = {disabler,disablerPerms}
+		p.coro = coroutine.create(func)
+		p.args = args
+		table.insert(nullsch,id)
+		proc[id] = p
+		return p
+	end
+	function tasker.findTaskFromFunction(func)
+		for i, v in pairs(proc) do
+			if v.func == func then
+				return v
+			end
+		end
+	end
+	function tasker.getTaskFromPID(id)
+		return proc[id]
+	end
+	function tasker.run(event)
+		local nh = nullsch
+		nullsch = {}
+		local sh = sch[event[1]] or {}
+		sch[event[1]] = {}
+		for i, v in pairs(nh) do
+			local p = proc[v]
+			if p then
+				if coroutine.status(p.coro) ~= "dead" then
+					local s, e
+					if p.args then
+						s,e = coroutine.resume(p.coro,unpack(p.args))
+						p.args = nil
+					else
+						s,e = coroutine.resume(p.coro,unpack(event))
+					end
+					if s then
+						if e then
+							sch[e] = sch[e] or {}
+							table.insert(sch[e],v)
+						else
+							table.insert(nullsch,v)
+						end
+					else
+						--TODO: Store errors in a error log--
+					end
+				else
+					--Coroutine died.--
+					if v == 0 then
+						error("[KP] Root Process died")
+					end
+				end
+			end
+		end
+		for i, v in pairs(sh) do
+			local p = proc[v]
+			if p then
+				if coroutine.status(p.coro) ~= "dead" then
+					local s, e = coroutine.resume(p.coro,unpack(event))
+					if s then
+						if e then
+							sch[e] = sch[e] or {}
+							table.insert(sch[e],v)
+						else
+							table.insert(nullsch,v)
+						end
+					else
+						--TODO: Store errors in a error log--
+					end
+				else
+					--Coroutine died.--
+					if v == 0 then
+						error("[KP] Root Process died")
+					end
+				end
+			end
+		end
+	end
+end
+
+do
+	--Installing std DSOS functions
+	
+	local function isRoot(pid)
+		local task = tasker.getTaskFromPID(pid)
+		if not task then
+			return false
+		else
+			return task.perms.root or false
+		end
+	end
+	
+	local function getCallingPID()
+		local at = 2
+		while true do
+			local f = setfenv(at,getfenv(at))
+			local task = tasker.findTaskFromFunction(f)
+			if task then
+				return task.id
+			end
+		end
+	end
+	
+	function os.isRoot(pid)
+		return isRoot(pid)
+	end
+	
+	function os.getCallingPID()
+		return getCallingPID()
+	end
+	
+	function os.setPerms(pid,perms)
+		if isRoot(getCallingPID()) then
+			--If calling process is not permaroot then unset permaroot
+			--Set perms
+			local above = tasker.getTaskFromPID(getCallingPID())
+			local task = tasker.getTaskFromPID(pid)
+			for i, v in pairs(perms) do
+				task.perms[i] = v
+				if i == "permaroot" and v then
+					if task.perms.permaroot and not above.perms.permaroot then
+						task.perms.permaroot = false
+					end
+				end
+			end
+		else
+			return -100 --Not ROOT Error
+		end
+	end
+	
+	function os.run(program)
+		--This will inherit the calling programs permisions, except permaroot. The program has to set that itself.
+		local f, e = loadfile(program)
+		local task = tasker.addTask(f)
+		local above = tasker.getTaskFromPID(getCallingPID())
+		for i, v in pairs(above.perms) do
+			task.perms[i] = v
+		end
+		task.perms.permaroot = false
+		return task.id
+	end
+end
+
+do
+	--Lets unload all the CraftOS SHITPIs. (loljk)
+	local unload = {
+		"gps",
+		"help",
+		"parallel",
+		"rednet",
+		"vector",
+		"shell"
+	}
+	for i, v in pairs(unload) do
+		_G[v] = nil
+		print("Sucessfully unloaded API "..v)
+	end
+end
+
+do
+	--fs overrides to run everything from .DSOS--
+	local function formPath(p)
+		return ".DSOS/"..fs.combine("",path)
+	end
+	local oldopen = fs.open
+	function fs.open(path,mode)
+		return fs.open(formPath(p),mode)
+	end
+	local oldmove = fs.move
+	function fs.move(p1,p2)
+		return oldmove(formPath(p1),formPath(p2))
+	end
+	local oldcopy = fs.copy
+	function fs.copy(p1,p2)
+		return oldcopy(formPath(p1),formPath(p2))
+	end
+	local olddelete = fs.delete
+	function fs.delete(p1)
+		return olddelete(formPath(p1))
+	end
+	local oldmakeDir = fs.makeDir
+	function fs.makeDir(p1)
+		return oldmakeDir(formPath(p1))
+	end
+end
+
+local function proc0()
+	if not os.isRoot(os.getCallingPID()) then
+		error("Process 0 lacks Root Permision")
+	end
+	if fs.exists("autostart-root") then
+		local fh = fs.open("autostart-root","r")
+		local line = fh.readLine()
+		while line do
+			os.run("bin/"..line)
+			line = fh.readLine()
+		end
+		fh.close()
+	end
+	os.pullEvent("key")
+end
+tasker.addTask(proc0,nil,0)
+os.queueEvent("os_start")
+while true do
+	tasker.run({os.pullEvent()})
+end

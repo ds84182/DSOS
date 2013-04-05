@@ -1,0 +1,62 @@
+print("Press space to stop pullevent bomb execution")
+local timer = os.startTimer(2)
+while true do
+	local e, k = os.pullEvent()
+	if e == "key" then
+		if k == keys.space then
+			return --to shell
+		end
+	elseif e == "timer" then
+		if k == timer then
+			break
+		end
+	end
+end
+local oldshutdown = os.shutdown --The further we get into the BIOS code, the better we can take over the computer
+function os.shutdown()
+	--TODO: Load the pebstart program for HDD root
+	os.shutdown = oldshutdown
+	term.clear()
+	term.setCursorPos(1,1)
+	print("peb v2")
+	print("[P]ull[E]vent [B]omb")
+	print("Loading pebstart...")
+	local fh = fs.open("pebstart","r")
+	if fh then
+		local f, e = loadstring(fh.readAll())
+		fh.close()
+		if not f then
+			print("Error loading pebstart")
+			print(e)
+			print("Press any key to continue")
+			os.pullEvent("key")
+			os.shutdown()
+		else
+			local s, e = pcall(f)
+			if not s then
+				term.clear()
+				term.setCursorPos(1,1)
+				print("Error executing pebstart")
+				print(e)
+				print("Press any key to continue")
+				os.pullEvent("key")
+				os.shutdown()
+			end
+		end
+	else
+		print("pebstart not found!")
+		print("Press any key to continue")
+		os.pullEvent("key")
+		os.shutdown()
+	end
+end
+local oldpullevent = os.pullEvent
+function os.pullEvent()
+	local _,e = pcall(function() error("lol",4) end)
+	local place, line = e:match("^([^:]+):([^:]+)")
+	if place == "bios" and line == "513" then
+		print("Were here!")
+		os.pullEvent = oldpullevent
+	end
+	error()
+end

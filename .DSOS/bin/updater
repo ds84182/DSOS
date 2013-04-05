@@ -1,0 +1,49 @@
+local versionChecking = true
+if http then
+	print("HTTP is enabled!")
+	if not versionChecking then
+		--Outside the OS, specify vars
+		updateURL = "https://raw.github.com/ds84182/DSOS/master/"
+	end
+	local function download(path)
+		local wh = http.get(updateURL..path)
+		local t = wh.readAll()
+		wh.close()
+		return t
+	end
+	if versionChecking then
+		--We are in DSOS, check for root
+		if not os.isRoot(os.getCallingPID()) then
+			print("Updater needs root")
+			return
+		end
+		local s = download("version")
+		local split = {}
+		for line in s:gmatch("[^\n]+") do
+			table.insert(split,line)
+		end
+		if tonumber(split[1]) > version.major or tonumber(split[2]) > version.minor or tonumber(split[3]) > version.build then
+			print("An update is available")
+			print("Press enter to download")
+			local e,k = os.pullEvent("key")
+			if k == keys.enter then
+				print("Starting update...")
+			else
+				return
+			end
+		end
+	end
+	local fl = download("filelist")
+	for line in fl:gmatch("[^\n]+") do
+		print("Downloading "..line.."...")
+		local fh = fs.open(line,"w")
+		fh.write(download(line))
+		fh.close()
+	end
+	print("Finished downloading")
+	if versionChecking then
+		os.reboot()
+	end
+else
+	print("Please enable HTTP to check for updates.")
+end

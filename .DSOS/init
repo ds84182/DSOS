@@ -1,4 +1,3 @@
-loadfile("enviromentVars")()
 do
 	function table.newReadOnlyTable(t)
 		--It also gives you a handy disabler :)
@@ -246,6 +245,8 @@ do
 		return oldmakeDir(formPath(p1))
 	end
 end
+
+loadfile("enviromentVars")()
 
 local function proc0()
 	if not os.isRoot(os.getCallingPID()) then

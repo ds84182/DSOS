@@ -1,0 +1,2 @@
+term.setTextColor(colors.yellow)
+print("Hello, World!")

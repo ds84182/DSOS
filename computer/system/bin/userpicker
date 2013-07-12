@@ -1,0 +1,104 @@
+local oprint = print
+local function fadeoutPrint(text)
+	local x,y = term.getCursorPos()
+	term.setTextColor(colors.white)
+	term.setCursorPos(x,y)
+	oprint(text)
+	sleep(0)
+	if term.isColor() then
+		term.setTextColor(colors.lightGray)
+		term.setCursorPos(x,y)
+		oprint(text)
+		sleep(0)
+		term.setTextColor(colors.gray)
+		term.setCursorPos(x,y)
+		oprint(text)
+		sleep(0)
+	end
+	term.setTextColor(colors.black)
+	term.setCursorPos(x,y)
+	oprint(text)
+	sleep(0)
+end
+
+local function fadePrint(text)
+	local x,y = term.getCursorPos()
+	term.setTextColor(colors.black)
+	term.setCursorPos(x,y)
+	oprint(text)
+	sleep(0)
+	if term.isColor() then
+		term.setTextColor(colors.gray)
+		term.setCursorPos(x,y)
+		oprint(text)
+		sleep(0)
+		term.setTextColor(colors.lightGray)
+		term.setCursorPos(x,y)
+		oprint(text)
+		sleep(0)
+	end
+	term.setTextColor(colors.white)
+	term.setCursorPos(x,y)
+	oprint(text)
+	sleep(0)
+end
+
+
+while true do
+	term.clear()
+	local w,h = term.getSize()
+	term.setCursorPos(1,math.floor(h*(1/5)))
+	fadePrint("Login to DSOS")
+	sleep(1/4)
+	term.setCursorPos(1,math.floor(h*(3/5)))
+	fadePrint("Username :")
+	sleep(1/8)
+	term.setCursorPos(1,math.floor(h*(4/5)))
+	fadePrint("Password :")
+	sleep(1/8)
+
+	term.setCursorPos(12,math.floor(h*(3/5)))
+	local user = read()
+	term.setCursorPos(12,math.floor(h*(4/5)))
+	local pass = read("*")
+
+	lib.load("libUser")
+	lib.load("libHash")
+	local s = User.logIn(user,Hash.sha256(pass))
+	
+	term.setCursorPos(1,math.floor(h*(1/5)))
+	fadeoutPrint("Login to DSOS")
+	sleep(1/4)
+	term.setCursorPos(1,math.floor(h*(3/5)))
+	fadeoutPrint("Username : "..user)
+	sleep(1/8)
+	term.setCursorPos(1,math.floor(h*(4/5)))
+	fadeoutPrint("Password : "..string.rep("*",math.min(#pass,w-12)))
+	sleep(1/8)
+
+	if s then
+		term.setBackgroundColor(colors.black)
+		term.clear()
+		sleep(1/4)
+		if term.isColor() then
+			term.setBackgroundColor(colors.gray)
+			term.clear()
+			sleep(1/4)
+			term.setBackgroundColor(colors.lightGray)
+			term.clear()
+			sleep(1/4)
+		end
+		term.setBackgroundColor(colors.white)
+		term.clear()
+		sleep(1/4)
+		local id = os.run("system/bin/desktop",nil,user,true)
+		while os.doesProcessExist(id) do sleep(0) end
+		break
+	else
+		term.setCursorPos(1,math.floor(h*(1/5)))
+		fadePrint("Login failed")
+		sleep(1/4)
+		term.setCursorPos(1,math.floor(h*(1/5)))
+		fadeoutPrint("Login failed")
+	end
+end

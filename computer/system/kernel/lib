@@ -1,0 +1,29 @@
+local lib = {}
+do
+	local loadedLibs = {}
+	local gfe = getfenv
+	local libenv = _G
+	function lib.load(libname)
+		if not loadedLibs[libname] then
+			local tEnv = {}
+			setmetatable( tEnv, { __index = gfe(4) } )
+			local fnAPI, err = loadfile( "system/lib/"..libname )
+			if fnAPI then
+				setfenv( fnAPI, tEnv )
+				fnAPI()
+			else
+				printError( err )
+				tAPIsLoading[sName] = nil
+				return false
+			end
+			
+			local tAPI = {}
+			for k,v in pairs( tEnv ) do
+				tAPI[k] =  v
+			end
+			loadedLibs[libname] = tAPI
+		end
+		gfe(4)[libname:sub(4)] = table.copy(loadedLibs[libname])
+	end
+end
+return lib

@@ -1,5 +1,5 @@
 print("Press space to stop pullevent bomb execution")
-local timer = os.startTimer(2)
+local timer = os.startTimer(1/2)
 while true do
 	local e, k = os.pullEvent()
 	if e == "key" then
@@ -34,10 +34,10 @@ function os.shutdown()
 		else
 			local s, e = pcall(f)
 			if not s then
-				term.clear()
-				term.setCursorPos(1,1)
-				print("Error executing pebstart")
-				print(e)
+				--term.clear()
+				--term.setCursorPos(1,1)
+				--print("Error executing pebstart")
+				printError(e)
 				print("Press any key to continue")
 				os.pullEvent("key")
 				os.shutdown()

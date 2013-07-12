@@ -1,0 +1,150 @@
+do
+	local tasker = tasker
+	local oldfs = oldfs
+	--Installing std DSOS functions
+	
+	local function isRoot(pid,func)
+		local task = tasker.getTaskFromPID(pid)
+		if not task then
+			return false
+		else
+			return task.perms.root or task.perms["root_"..(func or "")] or false
+		end
+	end
+	
+	local function getCallingPID()
+		local at = 2
+		while true do
+			local f = setfenv(at,getfenv(at))
+			local task = tasker.findTaskFromFunction(f)
+			if task then
+				return task.id
+			end
+			at = at+1
+		end
+	end
+	
+	function os.isRoot(pid)
+		return isRoot(pid)
+	end
+	
+	function os.getCallingPID()
+		return getCallingPID()
+	end
+	
+	function os.sendMessage(pid,...)
+		table.insert(tasker.getTaskFromPID(pid).events,{"message",...})
+	end
+	
+	function os.setPerms(pid,perms)
+		if isRoot(getCallingPID(),"setperms") then
+			--If calling process is not permaroot then unset permaroot
+			--Set perms
+			local above = tasker.getTaskFromPID(getCallingPID())
+			local task = tasker.getTaskFromPID(pid)
+			for i, v in pairs(perms) do
+				task.perms[i] = v
+				if i == "permaroot" and v then
+					if task.perms.permaroot and not above.perms.permaroot then
+						task.perms.permaroot = false
+					end
+				end
+			end
+		end
+	end
+	
+	function os.getPerms(pid)
+		local task = tasker.getTaskFromPID(pid)
+		local ret = {}
+		for i,v in pairs(task.perms) do
+			ret[i] = v
+		end
+		return ret
+	end
+	
+	function os.run(program,args,user,root)
+		--This will inherit the calling programs permisions, except permaroot. The program has to set that itself.
+		--Now, we will set the user to the user arg if this has proper perms, else it will set it as the user of the calling process
+		local f, e = loadfile(program)
+		local above = tasker.getTaskFromPID(getCallingPID())
+		root = root or false
+		root = root and above.perms.root
+		local task = tasker.addTask(f,args, nil, fs.combine(program,".."), isRoot(getCallingPID(),"changeuser") and user or above.user)
+		for i, v in pairs(above.perms) do
+			task.perms[i] = root and v or false
+		end
+		task.perms.permaroot = false
+		return task.id
+	end
+	
+	function os.getOldFS()
+		if isRoot(getCallingPID(),"nativefs") then
+			return oldfs
+		else
+			return fs -- /troll
+		end
+	end
+	
+	function os.getAllProcesses()
+		local p = tasker.getProcesses()
+		local ret = {}
+		for i, v in pairs(p) do
+			ret[i] = true
+		end
+		return ret
+	end
+	
+	function os.updateFileList()
+		if isRoot(getCallingPID(),"fsupdate") then
+			mount.updateFileList()
+		end
+	end
+	
+	function os.killProcess(pid)
+		if isRoot(getCallingPID(),"task_kill") or isRoot(getCallingPID(),"task") then
+			tasker.kill(pid)
+		end
+	end
+	
+	function os.doesProcessExist(pid)
+		return tasker.getTaskFromPID(pid) ~= nil
+	end
+	
+	local oldreboot = os.reboot
+	function os.reboot()
+		if isRoot(getCallingPID(),"power") then
+			oldreboot()
+		end
+	end
+	local oldshutdown = os.shutdown
+	function os.shutdown()
+		if isRoot(getCallingPID(),"power") then
+			oldshutdown()
+		end
+	end
+	function os.getResource(res)
+		local task = tasker.getTaskFromPID(getCallingPID())
+		local dir = fs.combine(task.dir,res)
+		return fs.open(dir,"r")
+	end
+	function os.readAllOfResource(res)
+		local fh = os.getResource(res)
+		local ret = fh.readAll()
+		fh.close()
+		return ret
+	end
+	function os.importLib(lib)
+		local fh = fs.open("/lib/lib"..lib,"r")
+		local code = fh.readAll()
+		fh.close()
+		_G[lib] = loadstring(code)()
+	end
+	function os.getTasker()
+		if isRoot(getCallingPID(),"task") then
+			return tasker
+		end
+	end
+	function os.getUser()
+		return tasker.getTaskFromPID(getCallingPID()).user
+	end
+end

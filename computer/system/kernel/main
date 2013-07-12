@@ -1,0 +1,179 @@
+local kload
+do
+	local kloadopen = fs.open
+	function kload(file)
+		--Loads a file into the Kernel Code
+		local fh = kloadopen("system/kernel/"..file,"r")
+		local f,e = loadstring(fh.readAll(),file)
+		fh.close()
+		if not f then
+			term.setBackgroundColor(colors.red)
+			term.clear()
+			local w, h = term.getSize()
+			term.setCursorPos(math.floor(w/2)-16,math.floor(h/4))
+			print("DSOS Kernel encountered an error")
+			term.setCursorPos(1,math.floor(h/2))
+			print("Error: \n"..e)
+			term.setCursorPos(math.floor(w/2)-12,h)
+			write("Press any key to continue")
+			os.pullEvent("key")
+			os.shutdown()
+		else
+			return f()
+		end
+	end
+end
+
+local dump = string.dump
+local type = type
+local loads = loadstring
+
+function table.copy(c,tc)
+	local tcache = tc or {} --Tables with loops are resolved correctly
+	local new = {}
+	if tcache[c] then
+		return tcache[c]
+	end
+	tcache[c] = new
+	for i, v in pairs(c) do
+		if type(v) == "table" then
+			new[i] = table.copy(v,tcache)
+		else
+			new[i] = v
+		end
+	end
+	return new
+end
+
+--setfenv(1,table.copy(getfenv(1)))
+
+kload("protectedTable")
+
+log = kload("log")
+
+tasker = kload("tasker")
+
+fsbind = kload("fsmodels/fsbind")
+blankfs = kload("fsmodels/blankfs")
+
+lib = kload("lib")
+
+mount = kload("mount")
+
+mount.add(blankfs.new(),"","")
+mount.add(fsbind.new("system"),"system","")
+mount.add(fsbind.new("rom"),"rom","")
+for i, v in pairs(mount.list("")) do
+	print(v)
+end
+
+oldfs = {}
+for i, v in pairs(fs) do
+	oldfs[i] = v
+end
+
+do
+	for i, v in pairs(oldfs) do
+		rawset(fs,i,mount[i])
+		print(i)
+	end
+	fs.combine = oldfs.combine
+	fs.getName = oldfs.getName
+end
+
+kload("os")
+
+--kload("pipe")
+
+do
+	--Lets unload all the CraftOS SHITPIs. (loljk)
+	local unload = {
+		"gps",
+		"help",
+		"parallel",
+		"rednet",
+		"vector",
+		"shell"
+	}
+	for i, v in pairs(unload) do
+		_G[v] = nil
+		print("Sucessfully unloaded API "..v)
+	end
+end
+
+loge = log
+log = nil
+local log = loge
+loge = nil
+
+taskere = tasker
+tasker = nil
+local tasker = taskere
+taskere = nil
+
+fsbinde = fsbind
+fsbind = nil
+local fsbind = fsbinde
+fsbinde = nil
+
+mounte = mount
+mount = nil
+local mount = mounte
+mounte = nil
+
+oldfse = oldfs
+oldfs = nil
+local oldfs = oldfse
+oldfse = nil
+
+--loadfile("enviromentVars")()
+
+local function proc0()
+	print(os.getCallingPID())
+	if not os.isRoot(os.getCallingPID()) then
+		error("Process 0 lacks Root Permision")
+	else
+		print("Process 0 has Root Permision")
+	end
+	--[[if fs.exists("autostart-root") then
+		print("Autostart root")
+		local fh = fs.open("autostart-root","r")
+		local line = fh.readLine()
+		while line do
+			print("bin/"..line.."/program")
+			loadfile("bin/"..line.."/program")()
+			line = fh.readLine()
+		end
+		fh.close()
+	end
+	if fs.exists("autostart-background-root") then
+		print("Autostart background root")
+		local fh = fs.open("autostart-background-root","r")
+		local line = fh.readLine()
+		while line do
+			loadfile("bin/"..line)()
+			line = fh.readLine()
+		end
+		fh.close()
+	end
+	local f,e = loadfile("bin/shell/program")
+	if not f then print(e) end
+	f()]]
+	lib.load("libHash")
+	local umgr = os.run("system/bin/usermgr",nil,"root",true)
+	while tasker.getTaskFromPID(umgr) do sleep(0) end
+	os.pullEvent("key")
+end
+print("Started proc0")
+tasker.addTask(proc0,nil,0,nil,"root")
+local s,e = pcall(function()
+	while true do
+		tasker.run({os.pullEvent()})
+	end
+end)
+if not s then printError(e) end
+for i, v in pairs(mount.getMounts()) do
+	if i ~= "" then
+		mount.remove(fs.getName(i),i:sub(#i,#i-#fs.getName(i)-1))
+	end
+end

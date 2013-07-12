@@ -1,0 +1,89 @@
+local userList = {}
+
+local function loadUser(dir)
+	--[[
+	User dir structure
+	pass - SHA256 encoded password
+	root - Depicts if the user has root perms
+	]]
+	local user = {name=fs.getName(dir)}
+	local fh = os.getOldFS().open(fs.combine(dir,"pass"),"r")
+	user.pass = fh.readAll()
+	fh.close()
+	fh = os.getOldFS().open(fs.combine(dir,"root"),"r")
+	user.root = fh.readAll() == "1"
+	fh.close()
+	print("Loaded user "..user.name)
+	return user
+end
+
+function loadUsers()
+	for i, v in pairs(os.getOldFS().list("udat")) do
+		if os.getOldFS().isDir("udat/"..v) then
+			userList[#userList+1] = loadUser("udat/"..v)
+			userList[v] = userList[#userList]
+		end
+	end
+end
+
+function getUsers()
+	return table.copy(userList)
+end
+
+function createUser(user,pass,root)
+	local ofs = os.getOldFS()
+	ofs.makeDir("udat/"..user)
+	local fh = ofs.open("udat/"..user.."/pass","w")
+	lib.load("libHash")
+	fh.write(Hash.sha256(pass))
+	fh.close()
+	fh = ofs.open("udat/"..user.."/root","w")
+	fh.write(root == "true" and "1" or "0")
+	fh.close()
+	userList = {}
+	loadUsers()
+end
+
+local loggedIn = {
+{"root",session={}}
+}
+
+function logIn(user,pass)
+	if userList[user] then
+		if userList[user].pass == pass then
+			table.insert(loggedIn,{user,session={}})
+			return true
+		end
+	end
+	return false
+end
+
+function logOut(user)
+	for i, v in pairs(loggedIn) do
+		if v[1] == user then
+			loggedIn[i] = nil
+			return true
+		end
+	end
+	return false
+end
+
+function sessionSet(n,v)
+	local user = os.getUser()
+	for i, v in pairs(loggedIn) do
+		if v[1] == user then
+			v.session[n] = v
+		end
+	end
+	error("Unknown user "..user)
+end
+
+function sessionGet(n)
+	local user = os.getUser()
+	for i, v in pairs(loggedIn) do
+		if v[1] == user then
+			return v.session[n]
+		end
+	end
+	error("Unknown user "..user)
+end

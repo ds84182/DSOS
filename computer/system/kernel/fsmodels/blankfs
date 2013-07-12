@@ -1,0 +1,39 @@
+local blankfs = {}
+
+do
+	function blankfs.new()
+		local fs = {}
+		function fs.open(path,mode)
+			return nil
+		end
+		function fs.move(p1,p2)
+			return false
+		end
+		function fs.copy(p1,p2)
+			return false
+		end
+		function fs.delete(p1)
+			return false
+		end
+		function fs.makeDir(p1)
+			return false
+		end
+		function fs.exists(p1)
+			return false
+		end
+		function fs.list(p1)
+			return {}
+		end
+		function fs.isDir(p1)
+			return false
+		end
+		function fs.remove()
+			
+		end
+		fs.getName = fs.getName
+		fs.combine = fs.combine
+		return fs
+	end
+end
+
+return blankfs

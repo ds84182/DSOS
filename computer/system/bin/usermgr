@@ -1,0 +1,9 @@
+lib.load("libUser")
+User.loadUsers()
+if #User.getUsers() == 0 then
+	local id = os.run("system/bin/createuser",{"firstboot"})
+	while os.doesProcessExist(id) do sleep(0) end
+end
+
+local id = os.run("system/bin/userpicker",nil,nil,true)
+while os.doesProcessExist(id) do sleep(0) end

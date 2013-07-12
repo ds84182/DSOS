@@ -1,0 +1,47 @@
+local fsbind = {}
+
+do
+	local oldfs = {}
+	for i, v in pairs(fs) do
+		oldfs[i] = v
+	end
+	function fsbind.new(dir)
+		local fs = {}
+		--fs overrides to run everything from .DSOS--
+		local function formPath(p)
+			return oldfs.combine("",dir).."/"..oldfs.combine("",p)
+		end
+		function fs.open(path,mode)
+			return oldfs.open(formPath(path),mode)
+		end
+		function fs.move(p1,p2)
+			return oldfs.move(formPath(p1),formPath(p2))
+		end
+		function fs.copy(p1,p2)
+			return oldfs.copy(formPath(p1),formPath(p2))
+		end
+		function fs.delete(p1)
+			return oldfs.delete(formPath(p1))
+		end
+		function fs.makeDir(p1)
+			return oldfs.makeDir(formPath(p1))
+		end
+		function fs.exists(p1)
+			return oldfs.exists(formPath(p1))
+		end
+		function fs.list(p1)
+			return oldfs.list(formPath(p1))
+		end
+		function fs.isDir(p1)
+			return oldfs.isDir(formPath(p1))
+		end
+		function fs.remove()
+			
+		end
+		fs.getName = oldfs.getName
+		fs.combine = oldfs.combine
+		return fs
+	end
+end
+
+return fsbind

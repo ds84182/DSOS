@@ -1,0 +1,143 @@
+pipe = {}
+do
+	--Pipez n Shiz, were playin Mario!--
+	local pipes = {}
+	local pat = 1
+	function pipe.new(w,h,color) --Creates a new pipe
+		local pid = pat
+		pat = pat+1
+		local p = {}
+		local cursor = {1,1,colors.white,colors.black}
+		local textData = {}
+		local fgData = {}
+		local bgData = {}
+		for x = 1, w do
+			textData[x] = {}
+			fgData[x] = {}
+			bgData[x] = {}
+			for y = 1, h do
+				textData[x][y] = " "
+				fgData[x][y] = -1
+				bgData[x][y] = -1
+			end
+		end
+		p.textData = textData
+		p.fgData = fgData
+		p.bgData = bgData
+		p.cursor = cursor
+		p.w = w
+		p.h = h
+		pipes[pid] = p
+		return pid
+	end
+	function pipe.getAPI(pid) --Gets the ComputerCraft standard term api that maps out to the pipe
+		local term = {}
+		local p = pipes[pid]
+		function term.setCursorPos(x,y)
+			p.cursor[1] = x
+			p.cursor[2] = y
+		end
+		function term.getCursorPos()
+			return p.cursor[1], p.cursor[2]
+		end
+		function term.write(t)
+			for i=1, #t do
+				if p.cursor[1]<=p.w then
+					p.textData[p.cursor[1]][p.cursor[2]] = t:sub(i,i)
+					p.fgData[p.cursor[1]][p.cursor[2]] = p.cursor[3]
+					p.bgData[p.cursor[1]][p.cursor[2]] = p.cursor[4]
+				end
+				p.cursor[1] = p.cursor[1]+1
+			end
+		end
+		function term.setCursorBlink(b)
+		
+		end
+		function term.getSize()
+			return p.w, p.h
+		end
+		function term.setTextColor(f)
+			--Comming soon: Color checks
+			p.cursor[3] = f
+		end
+		function term.setBackgroundColor(f)
+			--Comming soon: Color checks
+			p.cursor[4] = f
+		end
+		term.setTextColour = term.setTextColor
+		term.setBackgroundColour = term.setBackgroundColor
+		function term.scroll(n)
+			for i=1, n do
+				for y=2, p.h do
+					for x=1, p.w do
+						p.textData[x][y-1] = p.textData[x][y]
+						p.fgData[x][y-1] = p.fgData[x][y]
+						p.bgData[x][y-1] = p.bgData[x][y]
+					end
+				end
+				for x=1, p.w do
+					p.textData[x][p.h] = " "
+					p.fgData[x][p.h] = p.cursor[3]
+					p.bgData[x][p.h] = p.cursor[4]
+				end
+			end
+		end
+		function term.clearLine()
+			if p.cursor[2]<=p.h then
+				for x=1, p.w do
+					p.textData[x][p.cursor[2]] = " "
+					p.fgData[x][p.cursor[2]] = p.cursor[3]
+					p.bgData[x][p.cursor[2]] = p.cursor[4]
+				end
+			end
+		end
+		function term.clear()
+			for x=1, p.w do
+				for y=1, p.h do
+					p.textData[x][y] = " "
+					p.fgData[x][y] = p.cursor[3]
+					p.bgData[x][y] = p.cursor[4]
+				end
+			end
+		end
+		function term.isColor()
+			return true
+		end
+		term.isColour = term.isColor
+		return term
+	end
+	function pipe.render(pid,dx,dy)
+		dx = dx or 1
+		dy = dy or 1
+		dy = dy-1
+		local p = pipes[pid]
+		for y=1, p.h do
+			local t = ""
+			local fc = -1
+			local bc = -1
+			term.setCursorPos(dx,y+dy)
+			for x=1, p.w do
+				if p.fgData[x][y] ~= fc or p.bgData[x][y] ~= bc then
+					if fc ~= -1 then
+						term.setTextColor(fc)
+					end
+					if bc ~= -1 then
+						term.setBackgroundColor(bc)
+					end
+					term.write(t)
+					fc = p.fgData[x][y]
+					bc = p.bgData[x][y]
+					t = ""
+				end
+				t = t..p.textData[x][y]
+			end
+			if fc ~= -1 then
+				term.setTextColor(fc)
+			end
+			if bc ~= -1 then
+				term.setBackgroundColor(bc)
+			end
+			term.write(t)
+		end
+	end
+end

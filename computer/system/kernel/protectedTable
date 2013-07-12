@@ -1,0 +1,36 @@
+do
+	function table.newReadOnlyTable(t)
+		--It also gives you a handy disabler :)
+		local disabled = {false}
+		local proxy = {}
+		local mt = {       -- create metatable
+			__index = t,
+			__newindex = function (t,k,v)
+				--Do nothing. /troll
+				if disabled[1] then
+					t[k] = v
+				end
+			end}
+		setmetatable(proxy, mt)
+		return proxy, disabled
+    end
+	function table.newProtectedTable(tab,protect)
+		--This will protect the items specified by protect
+		--It also gives you a handy disabler :)
+		local disabled = {false}
+		local proxy = {}
+		local mt = {       -- create metatable
+			__index = tab,
+			__newindex = function (t,k,v)
+				if t == tab then
+					if not protect[k] or disabled[1]  then
+						rawset(t,k,v)
+					end
+				else
+					rawset(t,k,v)
+				end
+			end}
+		setmetatable(proxy, mt)
+		return proxy, disabled
+	end
+end

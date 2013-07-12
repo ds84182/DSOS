@@ -1,0 +1,123 @@
+lib.load("libPipe")
+local w,h = term.getSize()
+local pipe = Pipe.new(w,h,true)
+local oldterm = term
+
+local redrawBack = true
+
+term = Pipe.getAPI(pipe)
+_G.term = term
+Pipe.lock(pipe)
+local tasker = os.getTasker()
+tasker.addTask(function()
+	lib.load("libPipe")
+	while true do
+		sleep(0)
+		Pipe.render(pipe,1,1)
+	end
+end,nil,nil,nil,os.getUser(),"desktop_render")
+
+function drawTaskbar()
+	term.setCursorPos(1,h)
+	term.setBackgroundColor(colors.lightGray)
+	term.clearLine()
+	term.setBackgroundColor(colors.lime)
+	term.write("menu")
+end
+
+function makeMenu(items,x,y)
+	--local dir = 0 --The direction is determined via screen edge
+	-- 0 = Down Right 1 = Up Right 2 = Up Left 3 = Down Left
+	local width, height = 0, #items-1
+	for i, v in pairs(items) do
+		width = math.max(width,#v)
+	end
+	if x+width>w and not y+height>h then
+		--dir = 3
+		x = x-width
+	end
+	if x+width>w and y+height>h then
+		--dir = 2
+		x = x-width
+		y = y-height
+	end
+	if not ((x+width)>w) and y+height>h then
+		--dir = 1
+		y = y-height
+	end
+	--error(x..","..y.." "..width..","..height)
+	local sel = 0
+	redrawBack = true
+	while true do
+		term.setBackgroundColor(colors.gray)
+		for cx=x, x+width do
+			for cy=y, y+height do
+				term.setCursorPos(cx,cy)
+				term.write(" ")
+			end
+		end
+		for i, v in pairs(items) do
+			term.setCursorPos(x,y+(i-1))
+			if i == sel then term.setBackgroundColor(colors.lightGray) end
+			term.write(v)
+			if i == sel then term.setBackgroundColor(colors.gray) end
+		end
+		local e,k = os.pullEvent()
+		if e == "key" then
+			if k == keys.backspace then
+				return nil
+			elseif k == keys.up then
+				sel = sel-1
+				sel = math.max(1,sel)
+				sel = math.min(sel,#items)
+			elseif k == keys.down then
+				sel = sel+1
+				sel = math.max(1,sel)
+				sel = math.min(sel,#items)
+			elseif k == keys.enter then
+				return sel, items[sel]
+			end
+		end
+	end
+end
+
+local appPipes = {}
+
+function render()
+	if redrawBack then
+		term.setBackgroundColor(colors.blue)
+		term.clear()
+		redrawBack = false
+	end
+	for i, v in pairs(appPipes) do
+		--Although, the x and y is the window position
+		term.setBackgroundColor(colors.lightGray)
+		local w,h = Pipe.getSize(v[1])
+		for x=0,w-1 do
+			term.setCursorPos(x+v[2],v[3])
+			term.write(" ")
+		end
+		term.setCursorPos(v[2]+1,v[3])
+		term.write(v[4])
+		Pipe.render(v[1],v[2],v[3]+1,v[5])
+	end
+	drawTaskbar()
+end
+
+while true do
+	render()
+	local e,k = os.pullEvent()
+	if e == "key" then
+		if k == keys.leftAlt then
+			local _, i = makeMenu(fs.list("system/bin"),1,h-1)
+			if i then
+				appPipes[1] = {Pipe.new(25,9,true),1,1,i,term}
+				local f = loadfile("system/bin/"..i)
+				local p = tasker.addTask(f,nil,nil,nil,os.getUser(),i,envovr)
+				p.env.term = Pipe.getAPI(appPipes[1][1])
+				--p.env.term = p.env._G.term
+				
+			end
+		end
+	end
+end

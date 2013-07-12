@@ -1,0 +1,5 @@
+local f,e = loadfile("system/kernel/main")
+if not f then
+	error(e)
+end
+f()

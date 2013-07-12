@@ -1,0 +1,2 @@
+assert(os.isRoot(os.getCallingPID()),"Needs root")
+os.reboot()

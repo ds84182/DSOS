@@ -1,0 +1,171 @@
+local args = {...}
+assert(os.isRoot(os.getCallingPID()),"Needs root in order to create users")
+local oprint = print
+local function fadePrint(text)
+	local x,y = term.getCursorPos()
+	term.setTextColor(colors.white)
+	term.setCursorPos(x,y)
+	oprint(text)
+	sleep(0)
+	if term.isColor() then
+		term.setTextColor(colors.lightGray)
+		term.setCursorPos(x,y)
+		oprint(text)
+		sleep(0)
+		term.setTextColor(colors.gray)
+		term.setCursorPos(x,y)
+		oprint(text)
+		sleep(0)
+	end
+	term.setTextColor(colors.black)
+	term.setCursorPos(x,y)
+	oprint(text)
+	sleep(0)
+end
+
+local function fadeoutPrint(text)
+	local x,y = term.getCursorPos()
+	term.setTextColor(colors.black)
+	term.setCursorPos(x,y)
+	oprint(text)
+	sleep(0)
+	if term.isColor() then
+		term.setTextColor(colors.gray)
+		term.setCursorPos(x,y)
+		oprint(text)
+		sleep(0)
+		term.setTextColor(colors.lightGray)
+		term.setCursorPos(x,y)
+		oprint(text)
+		sleep(0)
+	end
+	term.setTextColor(colors.white)
+	term.setCursorPos(x,y)
+	oprint(text)
+	sleep(0)
+end
+
+local function create(user,pass,root)
+	lib.load("libUser")
+	User.createUser(user,pass,root)
+end
+
+if args[1] == "firstboot" then
+	term.setBackgroundColor(colors.black)
+	term.clear()
+	sleep(1/4)
+	if term.isColor() then
+		term.setBackgroundColor(colors.gray)
+		term.clear()
+		sleep(1/4)
+		term.setBackgroundColor(colors.lightGray)
+		term.clear()
+		sleep(1/4)
+	end
+	term.setBackgroundColor(colors.white)
+	term.clear()
+	sleep(1/4)
+	term.setTextColor(colors.black)
+	term.setCursorPos(1,1)
+	fadePrint("Welcome to DSOS")
+	sleep(1/2)
+	fadePrint("This OS aims to be similar to Linux. If you have never used any Linux based OS, you may find yourself lost.")
+	sleep(1/2)
+	fadePrint("Here, we will make a new user.")
+	sleep(1/2)
+	fadePrint("This user will have permanent root permisions, so you can make more users at anytime")
+	sleep(1/2)
+	fadePrint("Multiple users can run at the same time, and the OS comes with a handy task manager that can terminate user sessions, and end processes from any user, and can only be used by a root user")
+	fadePrint("Just type 'sudo taskman' into a terminal session")
+	fadePrint("[Press Space to continue]")
+	while true do
+		local e,k = os.pullEvent("key")
+		if k == keys.space then
+			break
+		end
+	end
+elseif args[1] ~= nil then
+	--Ok, command line user creation. We will never draw to the screen
+	local user = args[1]
+	local pass = args[2]
+	local root = args[3]
+	create(user,pass,root)
+end
+term.setBackgroundColor(colors.white)
+term.setTextColor(colors.black)
+term.clear()
+term.setCursorPos(1,1)
+fadePrint("Create a new user")
+sleep(1/2)
+term.setCursorPos(1,3)
+fadePrint("Username: ")
+sleep(1/2)
+term.setCursorPos(1,5)
+fadePrint("Password: ")
+
+term.setCursorPos((#"Username: ")+1,3)
+local user = read()
+
+term.setCursorPos((#"Password: ")+1,5)
+local pass = read("*")
+
+--Awesome screen fadeout
+
+--term.clear()
+term.setCursorPos(1,1)
+print("Create a new user")
+term.setCursorPos(1,3)
+print(("Username: "..user):sub(1,term.getSize()))
+term.setCursorPos(1,5)
+print(("Password: "..string.rep("*",#pass)):sub(1,term.getSize()))
+sleep(1/4)
+if term.isColor() then
+	term.setTextColor(colors.gray)
+	--term.clear()
+	term.setCursorPos(1,1)
+	print("Create a new user")
+	term.setCursorPos(1,3)
+	print(("Username: "..user):sub(1,term.getSize()))
+	term.setCursorPos(1,5)
+	print(("Password: "..string.rep("*",#pass)):sub(1,term.getSize()))
+	sleep(1/4)
+	term.setTextColor(colors.lightGray)
+	--term.clear()
+	term.setCursorPos(1,1)
+	print("Create a new user")
+	term.setCursorPos(1,3)
+	print(("Username: "..user):sub(1,term.getSize()))
+	term.setCursorPos(1,5)
+	print(("Password: "..string.rep("*",#pass)):sub(1,term.getSize()))
+	sleep(1/4)
+end
+term.setTextColor(colors.white)
+--term.clear()
+term.setCursorPos(1,1)
+print("Create a new user")
+term.setCursorPos(1,3)
+print(("Username: "..user):sub(1,term.getSize()))
+term.setCursorPos(1,5)
+print(("Password: "..string.rep("*",#pass)):sub(1,term.getSize()))
+sleep(1/4)
+term.setBackgroundColor(colors.white)
+term.clear()
+sleep(1/4)
+if term.isColor() then
+	term.setBackgroundColor(colors.lightGray)
+	term.clear()
+	sleep(1/4)
+	term.setBackgroundColor(colors.gray)
+	term.clear()
+	sleep(1/4)
+end
+term.setBackgroundColor(colors.black)
+term.clear()
+sleep(1/4)
+term.setCursorPos(1,1)
+create(user,pass,true)
+fadeoutPrint("User successfully created")
+term.setCursorPos(1,1)
+sleep(1)
+fadePrint("User successfully created")
+term.setTextColor(colors.white)

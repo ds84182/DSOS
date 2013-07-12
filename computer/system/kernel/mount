@@ -1,0 +1,223 @@
+local mount = {}
+do
+	local vfs = {dirname = "",mount = nil,child = {}}
+	local vfsfiles = {}
+	local mounts = {}
+	--Mount api. This needs mount handlers--
+	--The real fs is a mount handler--
+	local function split(str, pat)
+		local t = {}  -- NOTE: use {n = 0} in Lua-5.0
+		local fpat = "(.-)" .. pat
+		local last_end = 1
+		local s, e, cap = str:find(fpat, 1)
+		while s do
+			if s ~= 1 or cap ~= "" then
+				table.insert(t,cap)
+			end
+			last_end = e+1
+			s, e, cap = str:find(fpat, last_end)
+		end
+		if last_end <= #str then
+			cap = str:sub(last_end)
+			table.insert(t, cap)
+		end
+		return t
+	end
+	local function updateInFS(mount,name,dir,out,mountrel)
+		out[name] = {dir = true, name = name, fulldir = dir, content = {}, mountrel = mountrel, mount = mount}
+		out = out[name].content
+		local list = mount.mount.list(mountrel)
+		for i, v in pairs(list) do
+			if mount.mount.isDir(fs.combine(mountrel,v)) then
+				print("Updating "..fs.combine(dir,v))
+				updateInFS(mount,v,fs.combine(dir,v),out,fs.combine(mountrel,v))
+			else
+				print("Updating file "..fs.combine(dir,v))
+				out[v] = {file = true,name = v,fulldir = fs.combine(dir,v), mountrel = fs.combine(mountrel,v), mount = mount}
+			end
+		end
+	end
+	local function updateFileListImpl(dir,mount,out)
+		local list = mount.mount.list("")
+		for i, v in pairs(list) do
+			if mount.mount.isDir(v) then
+				print("Updating "..fs.combine(dir,v))
+				updateInFS(mount,v,fs.combine(dir,v),out,v)
+				print("f")
+			else
+				out[v] = {file = true,name = v,fulldir = fs.combine(dir,v), mountrel = v, mount = mount}
+			end
+		end
+		for i, v in pairs(mount.child) do
+			if not out[v.dirname] then
+				out[v.dirname] = {dir = true,name = v.dirname, fulldir = fs.combine(dir,v.dirname), mountrel = v, content = {}, mount = mount}
+			end
+			print("Updating mount "..fs.combine(dir,v.dirname))
+			updateFileListImpl(fs.combine(dir,v.dirname),v,out[v.dirname].content)
+		end
+	end
+	function mount.updateFileList()
+		vfsfiles = {dir = true,name = "",fulldir = "",content = {},mount = vfs}
+		print("Updating /")
+		updateFileListImpl("",vfs,vfsfiles.content)
+	end
+	function mount.add(mounthandler,mountname,mountdir)
+		local pathsplit = split(mountdir,"/")
+		local parentPath = vfs
+		for i, v in pairs(pathsplit) do
+			if not parentPath.child[v] then
+				parentPath.child[v] = {dirname = v, mount = nil, child = {}}
+			end
+			parentPath = parentPath.child[v]
+		end
+		local mountpath
+		if mountname == "" then
+			mountpath = parentPath
+		else
+			parentPath.child[mountname] = {}
+			mountpath = parentPath.child[mountname]
+		end
+		mountpath.dirname = mountname
+		mountpath.mount = mounthandler
+		mountpath.child = mountpath.child or {}
+		mounts[fs.combine(mountdir,mountname)] = mountpath
+		mount.updateFileList()
+	end
+	function mount.remove(mountname,mountdir)
+		local pathsplit = split(mountdir,"/")
+		local parentParentPath = nil
+		local parentPath = vfs
+		for i, v in pairs(pathsplit) do
+			if not parentPath.child[v] then
+				error()
+			end
+			parentParentPath = parentPath
+			parentPath = parentPath.child[v]
+		end
+		if mountname == "" then
+			parentParentPath.child[pathsplit[#pathsplit]] = nil
+		else
+			parentPath.child[mountname] = nil
+		end
+		mounts[fs.combine(mountdir,mountname)].mount.remove()
+		mounts[fs.combine(mountdir,mountname)] = nil
+		mount.updateFileList()
+	end
+	function mount.getMounts()
+		return mounts
+	end
+	
+	local function getDir(dir,spath)
+		local path = spath
+		local pathsplit = split(dir,"/")
+		for i, v in pairs(pathsplit) do
+			if v ~= "" then
+				if not path.content[v] then
+					error("Cannot find directory")
+				end
+				path = path.content[v]
+				if path.file then
+					error("Cannot find directory")
+				end
+			end
+		end
+		return path
+	end
+	
+	local function getFile(dir,spath)
+		local path = spath
+		local pathsplit = split(dir,"/")
+		for i, v in pairs(pathsplit) do
+			if v ~= "" then
+				if not path.content[v] then
+					error("Cannot find file "..dir)
+				end
+				path = path.content[v]
+			end
+		end
+		if path.dir then
+			error("Cannot find file "..dir)
+		end
+		return path
+	end
+	
+	local function getFileOrCreate(dir,spath)
+		local path = spath
+		local pathsplit = split(dir,"/")
+		for i, v in pairs(pathsplit) do
+			if v ~= "" then
+				if not path.content[v] and i == #pathsplit then
+					--Just make a new file
+					path.content[v] = {file = true,name = v,fulldir = fs.combine(path.fulldir,v), mountrel = fs.combine(path.mountrel,v), mount = path.mount}
+					path.mount.mount.open(path.content[v].mountrel,"w").close()
+				end
+				if not path.content[v] then
+					error("Cannot find file")
+				end
+				path = path.content[v]
+			end
+		end
+		if path.dir then
+			error("Cannot find file "..dir)
+		end
+		return path
+	end
+	
+	local function getPath(dir,spath)
+		local path = spath
+		local pathsplit = split(dir,"/")
+		for i, v in pairs(pathsplit) do
+			if v ~= "" then
+				if not path.content[v] then
+					error("Cannot find file or directory")
+				end
+				path = path.content[v]
+			end
+		end
+		return path
+	end
+	
+	function mount.makeDir(dir)
+		local path = vfsfiles
+		local pathsplit = split(dir,"/")
+		for i, v in pairs(pathsplit) do
+			if v ~= "" then
+				if not path.content[v] then
+					path.content[v] = {dir = true, name = v, fulldir = fs.combine(path.fulldir,v), content = {}, mountrel = fs.combine(path.mountrel,v), mount = path.mount}
+					path.mount.mount.makeDir(path.content[v].mountrel)
+				end
+				path = path.content[v]
+				if path.file then
+					error("Cannot make directory")
+				end
+			end
+		end
+		return path
+	end
+	
+	function mount.list(dir)
+		local path = getDir(dir,vfsfiles)
+		local list = {}
+		for i,v in pairs(path.content) do
+			table.insert(list,v.name)
+		end
+		return list
+	end
+	
+	function mount.open(file,mode)
+		local file = (mode == "w" and getFileOrCreate or getFile)(file,vfsfiles)
+		return file.mount.mount.open(file.mountrel,mode)
+	end
+	
+	function mount.exists(p)
+		local s = pcall(function () getPath(p,vfsfiles) end)
+		return s
+	end
+	
+	function mount.isDir(p)
+		local f = getPath(p,vfsfiles)
+		return f.dir
+	end
+end
+
+return mount

@@ -1,0 +1,10 @@
+local log = {}
+do
+	local fh = fs.open("dsos.log","w")
+	function log.add(t)
+		fh.writeLine(t)
+		fh.flush()
+	end
+end
+
+return log

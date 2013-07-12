@@ -1,4 +1,0 @@
-DSOS
-====
-
-Repository For DSOS

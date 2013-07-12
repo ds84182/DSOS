@@ -1,9 +1,0 @@
-peb
-pebstart
-.DSOS/init
-.DSOS/autostart
-.DSOS/autostart-background
-.DSOS/autostart-root
-.DSOS/enviromentVars
-.DSOS/bin/updater
-.DSOS/lib/libtest

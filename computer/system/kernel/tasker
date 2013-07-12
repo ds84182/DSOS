@@ -1,0 +1,253 @@
+local tasker = {}
+assert(log)
+local log = log
+do
+	local sch = {}
+	local nullsch = {}
+	local proc = {}
+	local sfe = setfenv
+	local gfe = getfenv
+	
+	local procFrom
+	
+	local function wrapFunction(func,env,n)
+		local f = function(...)
+			--log.add(n)
+			local oenv = gfe(func)
+			sfe(func,gfe(2))
+			local arg = {pcall(func,...)}
+			if not arg[1] then
+				error(arg[2],2)
+			end
+			table.remove(arg,1)
+			if oenv then sfe(func,oenv) end
+			return unpack(arg)
+		end
+		setfenv(f,env)
+		return f
+	end
+	
+	local function wrapTable(tab,env,done)
+		local nt = {}
+		done = done or {}
+		for i, v in pairs(tab) do
+			if not done[i] and not done[v] then
+				log.add("Not done "..i)
+				local oi = i
+				local ov = v
+				if type(i) == "function" then
+					i = wrapFunction(i,env,"?")
+				elseif type(i) == "table" then
+					i = wrapTable(i,env,done)
+				end
+				done[oi] = i
+				if type(v) == "function" then
+					v = wrapFunction(v,env,i)
+				elseif type(v) == "table" then
+					v = wrapTable(v,env,done)
+				end
+				done[ov] = v
+				nt[i] = v
+			else
+				local ni = done[i]
+				local nv = done[v]
+				log.add("Done "..tostring(ni))
+				if not ni then
+					if type(i) == "function" then
+						ni = wrapFunction(i,env,"?")
+					elseif type(i) == "table" then
+						ni = wrapTable(i,env,done)
+					else
+						ni = i
+					end
+				end
+				
+				if not nv then
+					if type(v) == "function" then
+						nv = wrapFunction(v,env,i)
+					elseif type(v) == "table" then
+						nv = wrapTable(v,env,done)
+					else
+						nv = v
+					end
+				end
+				nt[ni] = nv
+			end
+		end
+		return nt
+	end
+	
+	function tasker.addTask(func,args,id,programdir,user,name,envovr)
+		os.queueEvent("proc_start")
+		if not id then
+			id = math.random(1,2^16)
+			while proc[id] do
+				id = math.random(1,2^16)
+			end
+		end
+		local perms = {}
+		local env = table.copy(_G) or envovr
+		env._G = nil
+		env = wrapTable(env,env)
+		env._G = {}
+		setmetatable(env._G,{__index = env})
+		local p = {}
+		if id == 0 and proc[0] == nil then
+			perms={root=true,permaroot=true}
+		end
+		env.procinfo = {id = id}
+		local procinfo = env.procinfo
+		local disabler
+		local disablerPerms
+		procinfo.perms, disablerPerms = table.newReadOnlyTable(perms)
+		env, disabler = table.newProtectedTable(env,{procinfo=true,os=true})
+		setfenv(func,env)
+		p.func = func
+		p.perms = perms
+		p.id = id
+		p.env = env
+		p.user = user
+		p.events = {}
+		p.disablers = {disabler,disablerPerms}
+		p.coro = coroutine.create(func)
+		p.args = args or {}
+		p.filter = nil
+		p.dir = programdir or ""
+		p.name = name or "Process "..id
+		table.insert(nullsch,id)
+		proc[id] = p
+		return p
+	end
+	function tasker.findTaskFromFunction(func)
+		--[[for i, v in pairs(proc) do
+			if v.func == func then
+				return v
+			end
+		end]]
+		return proc[procFrom]
+	end
+	function tasker.getTaskFromPID(id)
+		return proc[id]
+	end
+	function tasker.getProcesses()
+		return proc
+	end
+	function tasker.kill(pid)
+		proc[pid] = nil
+	end
+	function tasker.run(event)
+		local nh = nullsch
+		nullsch = {}
+		local sh = sch[event[1]] or {}
+		sch[event[1]] = {}
+		for i, v in pairs(nh) do
+			local p = proc[v]
+			if p then
+				if coroutine.status(p.coro) ~= "dead" then
+					procFrom = p.id
+					local s, e
+					if p.args then
+						s,e = coroutine.resume(p.coro,unpack(p.args))
+						p.args = nil
+					else
+						s,e = coroutine.resume(p.coro,unpack(event))
+					end
+					if s then
+						if e then
+							sch[e] = sch[e] or {}
+							table.insert(sch[e],v)
+							p.filter = e
+						else
+							table.insert(nullsch,v)
+							p.filter = nil
+						end
+					else
+						--TODO: Store errors in a error log--
+						proc[v] = nil
+						os.queueEvent("proc_end",v,true)
+						os.queueEvent("proc_err",v,e)
+						log.add(e)
+					end
+					procFrom = nil
+				end
+				if coroutine.status(p.coro) == "dead" then
+					--Coroutine died.--
+					proc[v] = nil
+					os.queueEvent("proc_end",v,false)
+					if v == 0 then
+						error("[KP] Root Process died")
+					end
+				end
+			end
+		end
+		for i, v in pairs(sh) do
+			local p = proc[v]
+			if p then
+				if coroutine.status(p.coro) ~= "dead" then
+					procFrom = p.id
+					local s, e = coroutine.resume(p.coro,unpack(event))
+					if s then
+						if e then
+							sch[e] = sch[e] or {}
+							table.insert(sch[e],v)
+							p.filter = e
+						else
+							table.insert(nullsch,v)
+							p.filter = nil
+						end
+					else
+						--TODO: Store errors in a error log--
+						proc[v] = nil
+						os.queueEvent("proc_end",v,true)
+						os.queueEvent("proc_err",v,e)
+						log.add(e)
+					end
+					procFrom = nil
+				end
+				if coroutine.status(p.coro) == "dead" then
+					--Coroutine died.--
+					proc[v] = nil
+					os.queueEvent("proc_end",v,false)
+					if v == 0 then
+						error("[KP] Root Process died")
+					end
+				end
+			end
+		end
+		for i, p in pairs(proc) do
+			if #p.events > 0 then
+				if coroutine.status(p.coro) ~= "dead" then
+					local event = p.events[p.events]
+					p.events[p.events] = nil
+					local s, e = coroutine.resume(p.coro,unpack(event))
+					if s then
+						if e then
+							sch[e] = sch[e] or {}
+							table.insert(sch[e],v)
+							p.filter = e
+						else
+							table.insert(nullsch,v)
+							p.filter = nil
+						end
+					else
+						--TODO: Store errors in a error log--
+						proc[v] = nil
+						os.queueEvent("proc_end",v,true)
+						os.queueEvent("proc_err",v,e)
+						log.add(e)
+					end
+				end
+				if coroutine.status(p.coro) == "dead" then
+					--Coroutine died.--
+					proc[v] = nil
+					os.queueEvent("proc_end",v,false)
+					if v == 0 then
+						error("[KP] Root Process died")
+					end
+				end
+			end
+		end
+	end
+end
+
+return tasker
